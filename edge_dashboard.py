@@ -317,10 +317,19 @@ class Engine:
         surprise = limited_number(body.get("surprise", 4), 0, 6, True)
         if not 1 <= surprise <= 5:
             raise ValueError("Surprise must be between 1 and 5")
+        # LAN Engine verifies the device before a session starts. HybridEngine
+        # already validates its chosen route before reaching this method.
+        # Capture Stop epoch before a potentially slow device lookup.
         with self.state_lock:
             if self.fault_latched or self.close.is_set() or self.stop_in_flight:
                 raise RuntimeError("Connection fault locked or Stop pending: cannot Start")
-            if expected_stop_epoch is not None and self.stop_epoch != expected_stop_epoch:
+            request_epoch = self.stop_epoch if expected_stop_epoch is None else expected_stop_epoch
+        if route is None:
+            self._require_edge2()
+        with self.state_lock:
+            if self.fault_latched or self.close.is_set() or self.stop_in_flight:
+                raise RuntimeError("Connection fault locked or Stop pending: cannot Start")
+            if self.stop_epoch != request_epoch:
                 raise RuntimeError("Start cancelled by STOP")
             if route is not None:
                 self.active_route = route
@@ -398,11 +407,18 @@ class Engine:
         return self.status()
 
     def test(self, expected_stop_epoch=None, route=None):
-        # Tests separate motor commands; a device without support will error.
+        # LAN Engine verifies the toy; HybridEngine validates its own route.
+        # Preserve Stop priority if Stop arrives during slow device validation.
         with self.state_lock:
             if self.fault_latched or self.close.is_set() or self.stop_in_flight:
                 raise RuntimeError("Connection fault locked or Stop pending: cannot Test")
-            if expected_stop_epoch is not None and self.stop_epoch != expected_stop_epoch:
+            request_epoch = self.stop_epoch if expected_stop_epoch is None else expected_stop_epoch
+        if route is None:
+            self._require_edge2()
+        with self.state_lock:
+            if self.fault_latched or self.close.is_set() or self.stop_in_flight:
+                raise RuntimeError("Connection fault locked or Stop pending: cannot Test")
+            if self.stop_epoch != request_epoch:
                 raise RuntimeError("Motor test cancelled by STOP")
             if route is not None:
                 self.active_route = route
@@ -454,6 +470,13 @@ class Engine:
         if "".join(ch for ch in model if ch.isalnum()) not in ("edge", "edge2"):
             return None
         return toy
+
+    def _require_edge2(self):
+        """Verify one supported Edge 2 before standalone LAN Start or Test."""
+        status = self.refresh_toys()
+        if status["toyConnected"] is not True:
+            raise RuntimeError("Connected device is not confirmed as an Edge 2: " +
+                               (status.get("lastDeviceError") or "device unavailable"))
 
     def refresh_toys(self):
         if self.simulate:
