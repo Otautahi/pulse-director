@@ -1,121 +1,61 @@
-# PulseDirector
+# PulseDirector v4.6 — Unified Hybrid Edition (development candidate)
 
-**v4.5.0 LAN Edition — release candidate**  
-A free, self-hosted, browser-based controller for **one Lovense Edge 2**, running on Linux or Raspberry Pi OS with Lovense Remote's **local Game Mode** API.
+**Unreleased / experimental. Not the stable build. Not approved for automatic deployment to a live device.**
 
-[![Offline tests](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml/badge.svg?branch=release%2Fv4.5.0-lan-rc1)](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml)
-![Status: release candidate](https://img.shields.io/badge/status-release%20candidate-8a6dce)
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
-[![MIT licence](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
+The v4.6 development tree unifies the v4.5 public LAN controller with the extended private v4.5.7 hybrid controller. The private application is the functionality superset and the shared `edge2_director.py` is identical to the public version. This candidate incorporates the v4.6 Quiet Stop behaviour and two explicit runtime profiles.
 
-> **EXPERIMENTAL RELEASE CANDIDATE — NOT A STABLE RELEASE:** The original candidate allowed vibration to resume continuously after Bluetooth reconnect. The updated candidate automatically retries Stop on reconnection and locks the session after a fault. In one off-body test the Edge 2 **vibrated briefly on reconnect, then stopped automatically**; on a separate Wi-Fi interruption test it stayed stopped. These observations are not proof of a physical fail-safe: communication loss can prevent remote Stop. See [issue #2](https://github.com/Otautahi/pulse-director/issues/2) and [recovery validation](docs/RECOVERY_DESIGN.md).
+## Profiles
 
-> **Third-party API terms:** The candidate source is already publicly visible. Lovense's published [developer agreement](https://www.lovense.com/app-develop-api) leaves a question about application to independent, free LAN Game Mode projects; there are also several similar public GitHub projects and official integration examples. [Issue #4](https://github.com/Otautahi/pulse-director/issues/4) tracks this as a **clarification to pursue**, not proof of an outright distribution prohibition. The MIT licence covers our own code only.
+- **LAN-only** (`--profile lan`) runs the base Edge 2 Game Mode controller. No cloud token is read and the cloud pairing API returns 404. The pairing panel is hidden. This is the closest compatibility option for the earlier public release.
+- **Hybrid** (`--profile hybrid`) runs the private LAN/HTTPS Cloud engine with optional HTTPS pairing, route-pinned commands, and cloud diagnostics. Cloud is **not automatically enabled** by this flag. A properly configured token, a separately authenticated callback, a recent pairing event and the intentionally created `.edge_https_cloud_enabled` flag are necessary before any cloud commands can be attempted. Prior callback status is not a live heartbeat or proof that the device responded.
 
-## What you get
+Both profiles use the shared Autonomous Director and motor-pattern engine; only one Edge 2 is supported. The Max 2 and multi-device control are **not implemented**.
 
-| Feature | LAN Edition |
-| --- | --- |
-| Independent Motor 1 and Motor 2 control | Yes |
-| 20+ selectable modes and manual motor controls | Yes |
-| Autonomous Director with intentional, stateful sequences | Yes |
-| Director behaviours | Confident, Unpredictable, Patient, Playful, Progressive |
-| Session flows | High energy, Balanced, Build, Waves |
-| Adjustable Surprise | 1–5 |
-| Holds, scene switches, pattern callbacks and live intent display | Yes |
-| Intensity, session time and Motor 2 contribution caps | Yes |
-| Local browser interface and access key | Yes |
-| Offline simulation | Yes |
-| Cloud API, Cloud Keeper or public internet control | **Not included** |
-| Max 2 or simultaneous multi-device control | **Not supported** |
+## Offline first
 
-The Autonomous Director is a **local, rule-based controller**, not a remote human or a model that can sense reactions. Its status messages describe programmed decisions; they do not imply feedback from your body or a live operator.
-
-**Hardware verification:** One Edge 2 was tested off-body with both motors, timed Director sessions, manual Stop, Bluetooth/Wi-Fi loss and recovery. The owner ran 39 offline tests on the Pi before the final malformed-response guard; the latest **40 offline tests** pass in GitHub Actions on Python 3.10, 3.11, 3.12 and 3.13. The concurrent Start/Stop protection is tested offline only. These tests cannot guarantee physical stopping under every fault.
-
-## Quick start on Raspberry Pi / Linux
-
-Requires **Python 3.10+**, Git, a Lovense Edge 2 and a phone running Lovense Remote with **Game Mode** enabled. No external Python packages, cloud account, cloud token or pairing QR are needed for this edition.
-
-This is a **release-candidate branch**, not a tagged stable release. Install into a new directory:
+From an isolated checkout (not the live deployment):
 
 ```bash
-git clone --branch release/v4.5.0-lan-rc1 --single-branch https://github.com/Otautahi/pulse-director.git
-cd pulse-director
-python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -q
+python3 -m py_compile edge_dashboard.py edge2_director.py edge2_https_pairing.py edge2_pairing_ui.py https-standard-probe/https_probe.py
+python3 edge_dashboard.py --profile lan --simulate --port 8876
 ```
 
-Try the offline UI on the Pi first:
+This simulation listens on `127.0.0.1:8876`. If using a headless Pi, an SSH tunnel can access it without exposing the service. The simulator does **not** control a real device.
+
+To test the hybrid UI without any credentials or device I/O:
 
 ```bash
-python3 edge_dashboard.py --simulate
+python3 edge_dashboard.py --profile hybrid --simulate --port 8876
 ```
 
-Simulation listens on `127.0.0.1:8765` by default and does not send motor commands. On a headless Pi, see the [installation guide](docs/INSTALL.md) for viewing the dashboard safely.
-
-To use the **real Edge 2** on a trusted LAN, get your phone's *Game Mode IPv4 address*, then run (replace placeholders with your own addresses):
+Before any live LAN test, explicitly provide **your own** phone address and a trusted local bind address, for example:
 
 ```bash
-python3 edge_dashboard.py --phone YOUR_PHONE_LAN_IP --bind YOUR_PI_LAN_IP
+python3 edge_dashboard.py --profile lan --phone YOUR_PHONE_GAME_MODE_IP --bind YOUR_PI_LOCAL_IP --port 8876 --no-print-key
 ```
 
-Open `http://YOUR_PI_LAN_IP:8765` on a device connected to the same trusted LAN and enter the access key printed in the terminal. The generated key is stored locally in `.edge_dashboard_key`; **never commit or share it**.
+The first run writes a local random `.edge_dashboard_key` next to the script, mode 0600. Keep the key private. Never forward dashboard HTTP ports to the public internet; use a trusted LAN or WireGuard. Cloud pairing requires separate deployment and a callback HTTPS endpoint. This source bundle does **not** include configured systemd service files, ngrok credentials or a verified public installer.
 
-**[Full installation guide](docs/INSTALL.md)** · **[Off-body hardware test](docs/HARDWARE_TEST.md)** · **[Security and privacy](docs/SECURITY.md)** · **[Troubleshooting](docs/TROUBLESHOOTING.md)**
+## Quiet Stop
 
-## What it looks like
+After a successful intentional cloud Stop or timer expiry, the dashboard quietly returns to Standby. The cloud physical-off confirmation is still enforced **before another Start**. A connection failure or undelivered Stop remains a prominent fault. An accepted HTTPS API response is **not** proof that a physical motor stopped.
 
-These are screenshots of the actual v4.5 LAN dashboard rendered with **simulated data only**. No physical Edge 2 was connected, and no personal addresses, device IDs or access keys appear.
+## Known limits and release gates
 
-**Desktop — complete interface**
+1. This candidate passed offline Python tests on the development machine. **No live Pi service or real hardware was touched**, and public v4.5 regression tests still require separate cross-version confirmation on the unified branch.
+2. The public v4.5 release documented brief reactivation on Bluetooth reconnect before the recovery Stop succeeded. Physical Stop under link loss cannot be guaranteed.
+3. Cloud HTTPS callbacks reflect past events, not continuous device connectivity. Extended cloud sessions need particular caution.
+4. The API vendor's distribution terms remain under review; publication to the development branch does not mean a stable, certified or Lovense-endorsed release.
+5. This is Edge 2 only; model validation must not select an arbitrary connected device.
+6. For Pi deployment, first stage outside the running `private/` tree and preserve an offline/timestamped backup. Do not change the live `edge2-dashboard`, callback, ngrok, Pi-hole, WireGuard, FlightTracker or PS3 services until owner-approved off-body validation.
 
-[![PulseDirector LAN Edition desktop overview — simulated UI](docs/images/lan-desktop-overview.png)](docs/images/lan-desktop-overview.png)
+## Files included
 
-<details>
-<summary><strong>Mobile — Autonomous Director settings</strong></summary>
+- `edge_dashboard.py`: shared web UI, session engine, explicit runtime profiles, guarded hybrid transport, Quiet Stop.
+- `edge2_director.py`: unchanged common Autonomous Director.
+- `edge2_https_pairing.py`, `edge2_pairing_ui.py`: HTTPS pairing and QR presentation.
+- `https-standard-probe/https_probe.py`: separately authenticated callback helper (not an unattended cloud-control daemon).
+- `tests/`: private regression suite plus new unified profile checks.
 
-![PulseDirector LAN Edition mobile Autonomous Director panel — simulated UI](docs/images/lan-mobile-director.png)
-
-</details>
-
-The mobile image shows the Director panel rather than an entire scrolling phone screen. Older cloud-mode screenshots are excluded. See [screenshot notes](docs/images/README.md).
-
-## Architecture
-
-```text
-Browser on trusted LAN / private VPN
-             |
- PulseDirector (Pi / Linux; port 8765)
-             |
- Lovense local Game Mode API (phone:20010)
-             |
- Lovense Remote app on phone
-             |
-      Bluetooth → Edge 2
-```
-
-The Pi contacts the **phone**, not the toy directly. Keep the Pi and phone on a mutually reachable trusted network. Local control does not mean the Lovense phone app itself is entirely offline; it means **PulseDirector sends no motor commands through a cloud API**.
-
-## Compatibility and important limits
-
-- **One connected Edge 2 only.** The release candidate rejects zero, multiple, ambiguous and unrecognised device reports, including Max 2; this compatibility check still requires validation against live firmware.
-- No device-control commands should be sent without the physical device owner present and consenting.
-- Stop, timers and short-duration commands are **best effort**: a phone, Wi-Fi or Bluetooth failure can delay or prevent immediate stopping. Keep an independent physical disconnect available.
-- Battery and connection status are reports from Lovense Remote, not independently measured values. A successful API response does **not** prove a motor moved.
-- The interface uses **HTTP and a local access key**, not HTTPS. Never forward port 8765 to the internet.
-
-See the [release checklist](docs/RELEASE_CHECKLIST.md) for what remains before we can call this stable.
-
-## Project status and roadmap
-
-**Now:** v4.5.0 LAN Edition is an **experimental release candidate**, with 40 offline regression tests and limited off-body verification on one Edge 2. See [GitHub Releases](https://github.com/Otautahi/pulse-director/releases) for published experimental versions and [PR #1](https://github.com/Otautahi/pulse-director/pull/1) for the merge record. No stable release or physical Stop certification is claimed.
-
-**Before a stable tag:** finish fresh-install and privacy/security review, assess residual [Bluetooth reconnect risk](https://github.com/Otautahi/pulse-director/issues/2), document [vendor terms uncertainty](https://github.com/Otautahi/pulse-director/issues/4) and obtain final owner approval. Do not treat the observed automatic Stop on reconnect as guaranteed. See [hardware results](docs/HARDWARE_TEST.md).
-
-**Possible later work (not promised):** expanded device telemetry, smoother setup, user feedback on Director sequencing, and separately validated Max 2 support. The public v4.5 LAN edition does **not** support Max 2.
-
-[Contributions and bug reports](CONTRIBUTING.md) are welcome; please **remove logs, addresses, access keys, pairing data and device IDs** before sharing.
-
-## Licence and independence
-
-PulseDirector's own source code is published under the [MIT licence](LICENSE). This does not grant any rights in Lovense's software, services, names or APIs. The project is **independent and not affiliated with, sponsored by or endorsed by Lovense**. Applicable third-party developer/API and redistribution terms **must be clarified** before a stable release; in particular section 3.5 of the [Lovense agreement](https://www.lovense.com/app-develop-api) raises an unresolved public-repository distribution question ([issue #4](https://github.com/Otautahi/pulse-director/issues/4)).
+The older Socket.IO `edge2_cloud_keeper.py` and `controller.py` were intentionally **excluded from the unified runtime package**: they are not active dependencies of the current HTTPS architecture and contain obsolete per-home assumptions. Keep them in archived private history rather than silently reintroducing them.
