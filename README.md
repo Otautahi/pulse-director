@@ -4,6 +4,20 @@
 
 [![Offline tests](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml) · [MIT source licence](LICENSE) · [Security and limitations](docs/SECURITY.md)
 
+## Where can I run it?
+
+| What you have | Installation status |
+|---|---|
+| **Raspberry Pi 3B+** running Raspberry Pi OS / Linux with Python 3.10+ | **Owner-tested** with one Edge 2 |
+| **Other Raspberry Pi models** with a suitable Linux OS and Python 3.10+ | Intended to work; not individually hardware-tested |
+| **Linux PC, mini PC or server** with Python 3.10+ | Supported source setup; physical Edge 2 testing has focused on the Pi |
+| **Windows or macOS computer** | Native installation **not verified or documented** |
+| **Android or iPhone alone** | **Not a standalone phone app.** The phone runs Lovense Remote; open the PulseDirector dashboard in a browser |
+
+**You also need:** one Lovense **Edge 2**, a phone running Lovense Remote with **Game Mode**, and a trusted local network connecting the phone and Linux host. **Max 2 and multiple toys aren't supported yet.** No paid cloud service or Python `pip` packages are required for the standard LAN setup.
+
+**New to this? Follow the [step-by-step installation guide](docs/INSTALL.md)** — it covers requirements, which IP address to use, opening the dashboard, first off-body test, and troubleshooting.
+
 ## Screenshots — v4.6 web dashboard
 
 These are **static previews rendered from the actual v4.6 interface**, with the Edge 2 disconnected and no session active. No pairing codes, access keys, or private network details are shown.
@@ -43,28 +57,39 @@ These are **static previews rendered from the actual v4.6 interface**, with the 
 
 **Supported device:** a *single* reported Edge 2. Max 2, other toys and simultaneous multi-device operation are **not implemented**. The program refuses ambiguous, unsupported or multiple reported devices.
 
-## Quick start (Linux / Raspberry Pi OS, Python 3.10+)
+## Quick start — Raspberry Pi OS / Linux
 
-Use a *new, separate directory* and avoid overwriting a running controller:
+**1. Install Git and check Python.** On Raspberry Pi OS, Debian or Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y git python3
+python3 --version
+```
+
+If the version is lower than **3.10**, use a supported newer Linux OS image before continuing.
+
+**2. Download and run the offline tests** (no device commands):
 
 ```bash
 git clone https://github.com/Otautahi/pulse-director.git
 cd pulse-director
 python3 -m unittest discover -s tests -q
-python3 edge_dashboard.py --profile lan --simulate --port 8876
 ```
 
-Simulation is loopback-only (`127.0.0.1:8876`) and sends no real motor commands. From a headless Pi, connect with an SSH tunnel. To test the UI's optional Hybrid layout without real cloud access, use `--profile hybrid --simulate --port 8876` instead.
+**3. Connect one off-body Edge 2 in Lovense Remote**, enable Game Mode, and find the phone's local Wi-Fi IP address. On the Linux computer run `hostname -I` to find its **trusted LAN IP**. The phone and computer must be able to reach each other.
 
-For live **LAN-only** use, after reading the [installation guide](docs/INSTALL.md), connect *one* Edge 2 in Lovense Remote's Game Mode, keep the device **off-body** and start at the lowest level:
+**4. Start PulseDirector** — replace `PHONE_IP` and `LINUX_IP` with the two real IP addresses:
 
 ```bash
-python3 edge_dashboard.py --profile lan --phone YOUR_PHONE_GAME_MODE_IP --bind YOUR_PI_TRUSTED_LAN_IP --port 8765 --no-print-key
+python3 edge_dashboard.py --profile lan --phone PHONE_IP --bind LINUX_IP --port 8765
 ```
 
-The web dashboard uses HTTP with a locally generated access key (`.edge_dashboard_key` beside the script, owner-only file). It is **not internet-safe**: **never port-forward** the web UI. Use a trusted LAN or carefully configured private VPN only. Do not publish access keys, IP addresses or pairing tokens.
+**5. Open** `http://LINUX_IP:8765` in a browser on your trusted network. The dashboard access key is shown in the Linux terminal. Keep it private. Start with the Edge 2 **off-body at the lowest intensity** and check manual and timed Stop.
 
-For HTTPS/cloud background, see [Hybrid setup and limits](docs/HYBRID.md). Hybrid needs separately operated callback/pairing infrastructure; this repository does **not** automatically deploy or enable it.
+To stop the server, press **Ctrl+C** in the terminal. No background service or automatic startup is installed by these steps. For a no-device preview, remote/headless Pi access, additional troubleshooting and safe update guidance, see the **[full installation guide](docs/INSTALL.md)**.
+
+**Important:** This is an experimental controller, not a hardware fail-safe. A phone, Wi-Fi or Bluetooth outage can prevent a Stop reaching the toy. Keep its physical power button accessible. **Never port-forward the HTTP dashboard to the internet.**
 
 ## Safety limitations
 
