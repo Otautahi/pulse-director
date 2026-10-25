@@ -24,17 +24,15 @@ class DeviceValidationRegressions(unittest.TestCase):
 
     def test_string_wrapped_device_data_is_accepted(self):
         nested = json.dumps({"toys": json.dumps({"e": {"name": "Edge 2", "status": "1"}})})
-        item, error = dashboard.Engine._extract_toy({"data": nested})
+        item = dashboard.Engine._extract_toy({"data": nested})
         self.assertIsNotNone(item)
-        self.assertEqual(error, "")
 
     def test_multiple_connected_edges_are_rejected(self):
-        item, error = dashboard.Engine._extract_toy(self.toys_response({
+        item = dashboard.Engine._extract_toy(self.toys_response({
             "a": {"name": "Edge 2", "status": "1"},
             "b": {"name": "Edge 2", "status": "1"},
         }))
         self.assertIsNone(item)
-        self.assertIn("Multiple", error)
 
     def test_start_does_not_send_motor_command_for_max_2(self):
         engine = dashboard.Engine("127.0.0.1", simulate=False)
@@ -79,7 +77,8 @@ class StopAndAccessRegressions(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.engine.stop()
         self.assertFalse(self.engine.status()["running"])
-        self.assertIn("Stop command failed", self.engine.status()["message"])
+        self.assertIn("STOP NOT DELIVERED", self.engine.status()["message"])
+        self.assertTrue(self.engine.status()["faultLatched"])
 
     def test_expired_generation_cannot_send_levels(self):
         self.engine.start({"mode": "manual", "max": 5, "motor1": 5, "motor2": 5})

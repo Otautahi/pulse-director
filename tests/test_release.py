@@ -50,23 +50,21 @@ class ConnectionSelectionTests(unittest.TestCase):
 
     def test_single_edge2_is_allowed(self):
         for name in ("Edge", "Edge 2", "EDGE2"):
-            toy, error = dashboard.Engine._extract_toy(self.response({"id": {"name": name, "status": 1}}))
+            toy = dashboard.Engine._extract_toy(self.response({"id": {"name": name, "status": 1}}))
             self.assertIsNotNone(toy)
-            self.assertEqual(error, "")
+
 
     def test_max2_is_rejected(self):
-        toy, error = dashboard.Engine._extract_toy(self.response({"id": {"name": "Max 2", "status": 1}}))
+        toy = dashboard.Engine._extract_toy(self.response({"id": {"name": "Max 2", "status": 1}}))
         self.assertIsNone(toy)
-        self.assertIn("not confirmed", error)
 
     def test_multiple_connected_devices_refused(self):
-        toy, error = dashboard.Engine._extract_toy(self.response({"a": {"name": "Edge", "status": 1}, "b": {"name": "Max 2", "status": 1}}))
+        toy = dashboard.Engine._extract_toy(self.response({"a": {"name": "Edge", "status": 1}, "b": {"name": "Max 2", "status": 1}}))
         self.assertIsNone(toy)
-        self.assertIn("Multiple", error)
 
     def test_disconnected_or_unknown_is_refused(self):
         for toys in ({"a": {"name": "Edge", "status": 0}}, {"a": {"nickName": "Edge", "status": 1}}, {}):
-            toy, _ = dashboard.Engine._extract_toy(self.response(toys))
+            toy = dashboard.Engine._extract_toy(self.response(toys))
             self.assertIsNone(toy)
 
     def test_start_refused_if_unverified(self):

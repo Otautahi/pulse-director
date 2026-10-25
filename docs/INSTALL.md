@@ -1,108 +1,50 @@
-# Install PulseDirector v4.5 LAN Edition
+# Install and operate PulseDirector v4.6
 
-**Experimental release-candidate instructions, not a stable release.** The updated LAN-only build passed 40 offline tests across Python 3.10–3.13 in GitHub Actions and limited off-body hardware checks on one Edge 2 (including Bluetooth/Wi-Fi interruption and automatic Stop recovery). The toy briefly vibrated on Bluetooth reconnection before automatically stopping. These results do not establish physical fail-safe performance. Public stable publication still requires final safety, fresh-install and owner approval. [API-terms ambiguity](https://github.com/Otautahi/pulse-director/issues/4) is documented as a clarification rather than a definitive prohibition. Keep any existing working controller installed separately.
+**Experimental controller, not a fail-safe.** One Lovense Edge 2 only. Follow this document on a new Linux / Raspberry Pi OS installation. If upgrading an existing deployment, **do not overwrite its files or service**. Use a separate directory and test first; a project-specific backup/rollback cutover is needed for replacing a running service.
 
-## 1. Requirements
+## Requirements
 
-- Raspberry Pi OS or another Linux distribution, with **Python 3.10+** and Git
-- Lovense Edge 2 with the Lovense Remote phone app
-- Lovense Remote **Game Mode enabled**
-- A trusted LAN on which the Pi can reach the phone's Game Mode IPv4 address
-- An independent way to physically disconnect/stop the device
+- Python **3.10+**, Git and a Linux/Raspberry Pi OS machine
+- A phone running Lovense Remote, and one connected Edge 2
+- For LAN mode: local Game Mode enabled on the phone, with Pi-to-phone network reachability
+- Trusted LAN/VPN access, and immediate access to the device's physical power control
 
-**Not technically required for this specific local transport:** cloud API token, QR pairing service, Cloud Keeper, pip dependencies, Pi-hole or WireGuard. Cloud mode and Max 2 are not supported. Vendor developer/API terms may still impose registration, permissions or conditions on distribution; see [issue #4](https://github.com/Otautahi/pulse-director/issues/4).
+No pip dependencies, cloud account or HTTPS callback are necessary for the default LAN profile.
 
-On Debian / Raspberry Pi OS, install Python and Git if needed:
-
-```bash
-sudo apt update
-sudo apt install -y python3 git
-python3 --version
-```
-
-Use a separate directory from any existing software.
-
-## 2. Clone the release candidate
+## Fresh source checkout, offline tests and simulator
 
 ```bash
-cd ~
-git clone --branch release/v4.5.0-lan-rc1 --single-branch https://github.com/Otautahi/pulse-director.git pulse-director-lan
-cd pulse-director-lan
-python3 -m unittest discover -s tests -v
+git clone https://github.com/Otautahi/pulse-director.git
+cd pulse-director
+python3 -m unittest discover -s tests -q
+python3 -m py_compile edge_dashboard.py edge2_director.py edge2_https_pairing.py edge2_pairing_ui.py https-standard-probe/https_probe.py
+python3 edge_dashboard.py --profile lan --simulate --port 8876
 ```
 
-Tests simulate device replies and do **not** command physical motors. An automated pass is not proof of real-device compatibility.
+The simulator binds `127.0.0.1` by default, does not contact real devices, and should be stopped with Ctrl+C. If your Pi is headless, use an SSH tunnel from your desktop; for example `ssh -L 8876:127.0.0.1:8876 YOUR_PI_USER@YOUR_PI_HOST`, then open `http://127.0.0.1:8876` locally. PuTTY users can configure an equivalent local SSH tunnel. A per-checkout access key is written beside `edge_dashboard.py`. Don't paste it into tickets, logs or chats.
 
-## 3. Try the simulation first
+## Real-device LAN mode, off-body first
 
-Run locally on the Pi:
+1. Keep the Edge 2 **off-body**, fully accessible, and disconnect Max 2 or other toys.
+2. Connect the Edge 2 to Lovense Remote, switch on its local **Game Mode**, and note the phone's IPv4 address.
+3. Confirm the phone and Pi can communicate on a trusted network. Guest Wi-Fi/client isolation may block local API calls.
+4. Start the controller on an appropriate *unused* port using explicit addresses:
 
 ```bash
-python3 edge_dashboard.py --simulate
+python3 edge_dashboard.py --profile lan --phone YOUR_PHONE_GAME_MODE_IP --bind YOUR_PI_TRUSTED_LAN_IP --port 8765 --no-print-key
 ```
 
-The dashboard defaults to **127.0.0.1:8765** and prints a generated access key. On the Pi itself, open `http://127.0.0.1:8765` and enter that key.
+5. Open `http://YOUR_PI_TRUSTED_LAN_IP:8765` from your own authorized browser and enter the private access key saved in `.edge_dashboard_key` (owner-only file).
+6. Verify one Edge 2 is detected, try Motor 1 and Motor 2 separately at minimum intensity, verify manual Stop, and verify a short timed Stop. Never rely on HTTP acknowledgement as proof of physical Stop.
 
-If you use a headless Pi, the easiest way to view simulation from a PC is an SSH tunnel:
+If port 8765 is in use, choose another port. Never run two live controllers for one toy concurrently. Do **not** publish or router-forward a dashboard port; it is HTTP, not HTTPS. Stop immediately at the device if behavior is unexpected.
 
-```bash
-ssh -L 8765:127.0.0.1:8765 YOUR_PI_SSH_USER@YOUR_PI_LAN_IP
-```
+## Optional Hybrid profile
 
-Run the simulation in the SSH session or another Pi terminal, then open `http://127.0.0.1:8765` on **your PC**. If that port is already used on your PC, change the *first* 8765 in the SSH command to another free local port.
+`--profile hybrid` still prefers local LAN. It is explicitly optional and **does not enable cloud motor commands by itself**. Cloud use requires a separate token, a securely operated HTTPS callback/pairing service, recent authenticated pairing, and a local owner-only opt-in flag. See [HYBRID.md](HYBRID.md). If you don't have these, use LAN mode; the cloud integration is not required for normal operation.
 
-Alternatively, on a trusted isolated LAN only, bind the simulator to the Pi LAN address with `--simulate --bind YOUR_PI_LAN_IP` and open `http://YOUR_PI_LAN_IP:8765`. Do not port-forward.
+## Updating, services and rollback
 
-Press **Ctrl+C** to exit.
+A `git pull` changes source files, **not** a safely installed systemd service. Do not pull updates into a live private controller directory. Use versioned release directories, independent test environment and an explicit backup/rollback method; preserve existing `.edge_dashboard_key`, private cloud credentials and callback config outside public source. This repository does not include a preconfigured production service for your network, phone or cloud callback. Scripts in historical development documentation are not general-purpose installers.
 
-## 4. Connect the Edge 2 over LAN
-
-1. Turn on the Edge 2 and pair it in **Lovense Remote**.
-2. Disconnect Max 2 and all other Lovense toys: this build supports **one Edge 2 only**.
-3. Enable **Game Mode** in Lovense Remote; note the **phone's Game Mode IPv4 address**.
-4. Ensure the phone and Pi are on the same trusted, mutually reachable network. Guest isolation, VLAN firewall rules, or phone switching to cellular can prevent access.
-5. Off-body and at the lowest intensity, start:
-
-```bash
-cd ~/pulse-director-lan
-python3 edge_dashboard.py --phone YOUR_PHONE_LAN_IP --bind YOUR_PI_LAN_IP
-```
-
-Use actual addresses shown on *your* network. `--phone` must be a private LAN IPv4 address. `--bind` is the Pi interface to serve the web dashboard on; its safe default is `127.0.0.1`.
-
-Open `http://YOUR_PI_LAN_IP:8765` from a browser on your trusted LAN and enter the key printed on the Pi.
-
-`--port 8765` is optional; supply another port if necessary. A local firewall must allow the selected port from your trusted client devices only.
-
-## 5. Verify the real hardware off-body
-
-Before use:
-
-1. Confirm that the dashboard identifies a **single connected Edge 2**. If it refuses the model, **do not override the restriction**; file a sanitized compatibility report.
-2. Try Motor 1 and Motor 2 separately at the lowest intensity.
-3. Start a very short session and press **Stop all motors**.
-4. Verify automatic timer expiry and mode switching.
-5. During any testing of recovery from Wi-Fi/Bluetooth interruption, keep the toy **off-body** and the physical power button immediately accessible. Communication failure can prevent Stop commands from reaching the toy; on reconnection it may briefly activate before automatic retries stop it.
-
-**Important:** The software can only attempt Stop over the same connection as Start. Its fault latch blocks further sessions until the phone API accepts recovery Stop commands and the operator physically checks the toy and acknowledges the warning. An API acknowledgement is not independent evidence that the motors stopped. A phone, Bluetooth, network or hardware failure can prevent an immediate remote Stop.
-
-## 6. Access key and safe deployment
-
-At first launch, PulseDirector generates a random access key in `.edge_dashboard_key` beside `edge_dashboard.py`, with owner-only file permissions. Keep it private. Never paste it into GitHub, logs, screenshots or issues. The app uses HTTP, **not TLS**, so treat anyone who can reach the page or intercept LAN traffic as a potential controller.
-
-- Do **not** expose or forward port `8765` on your router.
-- Use a trusted LAN or a properly configured private VPN; limit access to authorized devices.
-- Don't install public code on the live Pi service before testing it.
-- This release candidate deliberately does **not** install a systemd service or auto-start active sessions.
-
-## 7. Updates and troubleshooting
-
-To fetch later changes to the **same candidate branch**, stop the test server and run:
-
-```bash
-cd ~/pulse-director-lan
-git pull --ff-only
-python3 -m unittest discover -s tests -v
-```
-
-Do not automatically upgrade the private controller or overwrite its key/config. For connection errors, unavailable addresses, access-key problems and compatibility warnings, see [Troubleshooting](TROUBLESHOOTING.md) and [Security](SECURITY.md).
+The legacy LAN-only edition is available at [`release/v4.5.0-lan-rc1`](https://github.com/Otautahi/pulse-director/tree/release/v4.5.0-lan-rc1). Always verify a fresh checkout separately before promoting production.

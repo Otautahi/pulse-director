@@ -1,3 +1,5 @@
+> **Historical v4.5 LAN-only test/design reference.** The current controller is v4.6 with an additional optional Hybrid profile. The detailed observations below describe the earlier v4.5 build; see [v4.6 security and testing](V46_SECURITY_AND_TESTING.md) for current behavior.
+
 # Connection-failure Stop recovery — experimental design
 
 **Status: prototype, with a first successful off-body reconnection test (16 October 2026).** This is not a physical Stop guarantee. See [issue #2](https://github.com/Otautahi/pulse-director/issues/2) for the original persistent vibration on Bluetooth reconnect and the fix follow-up. **The updated build still allowed a brief reconnect vibration before automatically stopping it.** Further testing, review and owner approval are required before merging or release.

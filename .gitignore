@@ -1,29 +1,31 @@
-# Runtime credentials, device status and files
+# Locally generated access keys, pairing identities, tokens and status
 .edge_dashboard_key
+.edge_cloud_token
 .edge_cloud_*
+.edge_https_cloud_enabled
+.https_probe_config.json
+.https_probe_status.json
+.https_probe_*.json
+https_probe_qr.jpg
+*.token
+*.secret
 .env
 .env.*
-*.token
 *credentials*
-*.secret
-*.log
-*.pid
-*.sqlite3
-*.db
-qr*
-*.png
-*.jpg
-*.jpeg
-*.webp
-*.zip
-*.tar.gz
-# Environment and generated outputs
+# Build/runtime state, credentials and noisy logs
 __pycache__/
 *.py[cod]
+.pytest_cache/
 .venv/
 venv/
-.pytest_cache/
-.coverage
-.DS_Store
-backups/
 logs/
+backups/
+*.log
+*.pid
+*.db
+*.sqlite3
+qr*.png
+qr*.jpg
+*.zip
+*.tar.gz
+.DS_Store

@@ -14,4 +14,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m unittest discover -s tests -v
-      - run: python -m py_compile edge_dashboard.py edge2_director.py
+      - run: python -m py_compile edge_dashboard.py edge2_director.py edge2_https_pairing.py edge2_pairing_ui.py https-standard-probe/https_probe.py
+      - run: python edge_dashboard.py --help
