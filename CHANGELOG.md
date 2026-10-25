@@ -1,27 +1,14 @@
 # Changelog
 
-## v4.5.0 LAN Edition — experimental release candidate (17 October 2026)
+## v4.6 Unified Edition — experimental source (25 October 2026)
 
-**Not a stable release.** `main` merge and stable tagging await final owner approval, fresh-install validation and further safety review. [Issue #4](https://github.com/Otautahi/pulse-director/issues/4) records an unresolved question about whether Lovense's API-publication terms apply to independent LAN Game Mode GitHub projects; it is a clarification item, not proof of a blanket ban. Source on the candidate branch is already public.
+- LAN-only is the **public default** (`--profile lan`); Hybrid is explicitly opt-in and its motor commands are disabled until separately authorized.
+- Unifies the reviewed private v4.5.7 hybrid implementation and the public LAN controller: Autonomous Director, Quiet Stop, LAN-first hybrid routing, QR/pairing UI and shared read-only pairing setup.
+- Runtime cloud enable-flag revocation prevents new cloud motor commands and requires restart to reenable; cloud Stop/recovery remains possible.
+- One supported Edge 2, route-pinned fault recovery, mandatory physical-off declaration after cloud Stop.
+- 163 offline tests passed on owner's Pi; GitHub Actions run #135 passed Python 3.10–3.13 for consolidated Dev4 before public README/default-profile cleanup.
+- Remaining limits: no clean-install/production-service certification, no guarantee of physical Stop under connectivity failures, no Max 2 or multi-device control. External callback and vendor terms require independent review.
 
-### Functionality
-- Retained the v4.5 Autonomous Director and browser dashboard for **one Edge 2** using the phone's local Game Mode API.
-- Removed the private hybrid/cloud backend, pairing monitor, Cloud Keeper, cloud UI states and credentials.
-- Added explicit device checks that reject zero, multiple or unverified/unsupported connected devices, including Max 2.
-- Default loopback HTTP bind and generated local access key; runtime phone and Pi addresses are not embedded in source.
+## Historical v4.5 LAN-only release (17 October 2026)
 
-### Connection recovery and Stop priority
-- On detected Wi-Fi/Bluetooth/Game Mode failure, invalidate the session and attempt Stop immediately.
-- When unreachable, latch a **physical state unknown** warning; retry Stop automatically after exactly one Edge 2 reconnects and require user acknowledgement before further motor activity.
-- Send multiple distinct Stop requests after reconnection; these confirm **phone API replies only**, not physical motor state.
-- Explicit Stop now cancels in-flight Start, motor Test and pattern-switch validation, preventing a stale request from reactivating motors.
-- Added eight recovery regression tests, five concurrent Stop/Start tests and a malformed-response safety regression: **40 offline tests** total.
-
-### Owner-reported off-body tests
-- Basic detection, both motors, Director, timed session and manual Stop passed (16 October 2026).
-- Original candidate **failed** Bluetooth reconnect: vibration returned and persisted until manual Stop.
-- **Updated candidate:** Bluetooth reconnect caused **brief vibration** followed by **automatic Stop** without manual action; a red fault lock appeared and cleared on operator acknowledgement (16 October 2026).
-- Updated candidate Wi-Fi disconnect/reconnect: motors stayed stopped, recovery completed and acknowledgement restored controls (17 October 2026).
-- GitHub Actions passed all 40 tests on Python 3.10–3.13; the owner ran the preceding 39-test version on the Pi.
-
-**Limitations:** neither short timed commands nor automatic retries guarantee physical Stop when communication is lost; brief vibration may occur on reconnection. The hardware results cover one user's setup only, not independent certification or broad device/firmware compatibility. See [issue #2](https://github.com/Otautahi/pulse-director/issues/2) and [recovery design](docs/RECOVERY_DESIGN.md).
+The complete original v4.5 LAN-only source, changelog and installation instructions remain in the [`release/v4.5.0-lan-rc1` branch](https://github.com/Otautahi/pulse-director/tree/release/v4.5.0-lan-rc1). Git history is preserved.

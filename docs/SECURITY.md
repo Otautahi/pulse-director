@@ -1,23 +1,24 @@
-# Security and privacy
+# PulseDirector v4.6 — security, privacy and physical control limits
 
-The dashboard controls a physical device. Use it **only on a trusted LAN or appropriately configured private VPN**. It listens on loopback by default. If binding to a LAN interface, restrict network access to trusted clients; never forward the port to the public internet. The interface uses HTTP and a shared dashboard key rather than TLS; untrusted LAN users could potentially intercept traffic.
+**PulseDirector controls a physical motor device and has no independent physical Stop guarantee.** The dashboard is intended for a trusted LAN or private VPN only. It uses **HTTP**, not TLS, with a generated shared access key; do not port-forward its port, bind it to a public interface, or use it on an untrusted LAN. Restrict access to authorized clients.
 
-## Files and credentials
+## Files, tokens and transport
 
-- `.edge_dashboard_key` is generated locally with owner-only permissions, and is not included in the source ZIP. Do not expose it in screenshots, GitHub commits, bug reports or application logs.
-- No cloud token, pairing QR, private UID, device identifier, hardcoded private network address, systemd unit or backup from the owner's Pi is included.
-- `.gitignore` cannot undo historic commits containing secrets. Rotate leaked secrets, and remove sensitive objects from public Git history before publication.
+- `.edge_dashboard_key` is generated locally and must remain owner-only. The key is independent of cloud pairing and must never be committed, logged or shared.
+- The default `--profile lan` does **not** read cloud tokens or expose cloud pairing. It contacts a local phone's Game Mode endpoint only.
+- `--profile hybrid` is optional and does not automatically enable cloud motor commands; token, authenticated pairing and a separate owner-only activation flag are required. The flag is revoked for the running process if removed or made unsafe. STOP remains available in recovery.
+- Treat cloud token, callback config, UID, authentication state, pairing QR and logs as sensitive. Use `PULSEDIRECTOR_CLOUD_TOKEN_FILE` and `PULSEDIRECTOR_HTTPS_PROBE_DIR` for separate privately stored data where needed; never publish these values or the actual callback URL.
+- HTTPS Cloud API transport is not proof that your *browser dashboard* is secure for public exposure. Server acknowledgement is not proof of physical motor movement or Stop. A pairing callback is historical, not a live heartbeat.
 
-## Device safety
+## Physical limits
 
-> **Bluetooth reconnect remains an inherent risk:** In the original build, Bluetooth loss led to code 402 / 00:00, then continuous vibration on reconnect. In the updated build, one owner-observed off-body test showed **brief resumed vibration followed by automatic Stop**; the fault warning blocked new sessions until recovery and acknowledgement. **Automatic Stop cannot be delivered while Wi-Fi/Bluetooth is unavailable and is not a physical fail-safe.** Keep the physical power button accessible. See [issue #2](https://github.com/Otautahi/pulse-director/issues/2) and [recovery design](RECOVERY_DESIGN.md).
+- Supports only one connected, recognized Edge 2. Max 2/multiple toy control is not implemented.
+- Stop, short command durations, fault latches and recovery are best-effort safeguards. Network/Bluetooth failures can delay or block Stop; transient vibration may occur when communication returns. Earlier off-body LAN testing observed brief vibration on Bluetooth reconnection before automatic Stop.
+- For cloud Stop or cloud recovery, physically switch off the device before acknowledging to rearm. Always keep immediate access to a real power button/physical disconnect; test off-body at low intensity before any new release.
+- Tests and an API `200` do not constitute physical safety certification or a guarantee across devices/firmware.
 
-- Only an `Edge`/`Edge 2` device reported connected by Game Mode is accepted; ambiguous/unsupported reports cause a refusal to start. Device detection was tested on one Edge 2; Bluetooth reconnect was mitigated in one controlled off-body test but brief unintended vibration remains.
-- Start with the device off-body and low intensity. Keep a direct physical stop option.
-- The app transmits bounded, short-duration commands and attempts Stop on errors, expiry and shutdown, but cannot guarantee immediate physical Stop after phone, Bluetooth or network failure.
-- A new session requires a fresh device readiness check; the controller never deliberately resumes a previous one after a detected error.
-- Dashboard command counts are not proof of physical vibration.
+## Responsible disclosure and terms
 
-## Disclosure and compliance
+Never submit screenshots or issues containing private data. `.gitignore` does not remove data committed in earlier history; leaked tokens must be revoked/rotated.
 
-This project is independent and unaffiliated with Lovense. The [Application Developer and API Agreement](https://www.lovense.com/app-develop-api) includes publication provisions, but its applicability to independently written offline/LAN Game Mode projects is unclear. Similar community integrations and official examples are available on GitHub; this is not a substitute for independent permission. [Issue #4](https://github.com/Otautahi/pulse-director/issues/4) tracks optional clarification. The source's MIT licence does not override Lovense's separate API, app or developer-material terms.
+This independent project is not affiliated with or endorsed by Lovense. MIT licenses this project's own code but does not supersede third-party developer agreements, API access conditions, trademarks or vendor material. An open question about API-publication applicability is tracked in [issue #4](https://github.com/Otautahi/pulse-director/issues/4); users must comply with their own applicable terms.

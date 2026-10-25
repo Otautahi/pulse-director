@@ -1,3 +1,5 @@
+> **Historical v4.5 LAN-only test/design reference.** The current controller is v4.6 with an additional optional Hybrid profile. The detailed observations below describe the earlier v4.5 build; see [v4.6 security and testing](V46_SECURITY_AND_TESTING.md) for current behavior.
+
 # Edge 2 hardware smoke test — v4.5.0 LAN RC1
 
 **Status (updated 17 October 2026):** The original build passed the basic off-body smoke test but **failed Bluetooth reconnection** (persistent unintended vibration). The corrected candidate, subsequently merged into this branch, was retested off-body: Bluetooth reconnection caused **brief resumed vibration followed by automatic Stop**; the dashboard fault latch and acknowledgement worked. Wi-Fi loss/reconnect also stopped motors and recovered without resumed vibration. **Forty offline tests** now pass in CI, including five Stop/Start concurrency tests and malformed API-response validation. The owner ran 39 tests on the Pi before this final response-validation addition. These are owner reports on one Edge 2, not broad physical fail-safe certification. Keep physical shutdown available; do not consider this a production-grade emergency Stop.

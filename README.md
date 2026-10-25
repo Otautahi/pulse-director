@@ -1,61 +1,58 @@
-# PulseDirector v4.6 — Unified Hybrid Edition (development candidate)
+# PulseDirector v4.6 — Edge 2 LAN & Hybrid controller
 
-**Unreleased / experimental. Not the stable build. Not approved for automatic deployment to a live device.**
+**Experimental / community project — not a certified physical safety device.** An independent, free, self-hosted browser controller for **one Lovense Edge 2** on Linux / Raspberry Pi OS, with a local Game Mode (LAN) profile and an **optional experimental** HTTPS Cloud integration. It is not affiliated with Lovense.
 
-The v4.6 development tree unifies the v4.5 public LAN controller with the extended private v4.5.7 hybrid controller. The private application is the functionality superset and the shared `edge2_director.py` is identical to the public version. This candidate incorporates the v4.6 Quiet Stop behaviour and two explicit runtime profiles.
+[![Offline tests](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml) · [MIT source licence](LICENSE) · [Security and limitations](docs/SECURITY.md)
 
-## Profiles
+## Profiles — LAN is the default
 
-- **LAN-only** (`--profile lan`) runs the base Edge 2 Game Mode controller. No cloud token is read and the cloud pairing API returns 404. The pairing panel is hidden. This is the closest compatibility option for the earlier public release.
-- **Hybrid** (`--profile hybrid`) runs the private LAN/HTTPS Cloud engine with optional HTTPS pairing, route-pinned commands, and cloud diagnostics. Cloud is **not automatically enabled** by this flag. A properly configured token, a separately authenticated callback, a recent pairing event and the intentionally created `.edge_https_cloud_enabled` flag are necessary before any cloud commands can be attempted. Prior callback status is not a live heartbeat or proof that the device responded.
+| | LAN (default) | Hybrid (opt-in) |
+|---|---|---|
+| Phone Game Mode over trusted LAN | Yes | Preferred when available |
+| Lovense HTTPS API motor commands | **No** | Experimental, **disabled by default** |
+| Cloud pairing / QR controls | Hidden/blocked | Available only with separate configuration |
+| Personal cloud token required | No | Only when configuring cloud transport |
+| Cloud response proves physical Stop | No | **No** |
 
-Both profiles use the shared Autonomous Director and motor-pattern engine; only one Edge 2 is supported. The Max 2 and multi-device control are **not implemented**.
+- Start in LAN mode with `--profile lan` (or omit `--profile`); no cloud token is loaded, and the cloud pairing API is unavailable.
+- `--profile hybrid` selects a LAN-first controller with cloud diagnostic/pairing functionality. It does **not** authorize cloud motor commands. Cloud use additionally requires separately configured credentials, verified pairing and an owner-controlled enable flag. Runtime flag removal revokes new cloud motor commands; Stop remains permitted, and re-enabling requires a fresh process.
+- Both profiles share the motor-pattern engine and rule-based **Autonomous Director** (20 modes, manual independent motor controls, adjustable intensity, session timers, and Stop/recovery safeguards).
 
-## Offline first
+**Supported device:** a *single* reported Edge 2. Max 2, other toys and simultaneous multi-device operation are **not implemented**. The program refuses ambiguous, unsupported or multiple reported devices.
 
-From an isolated checkout (not the live deployment):
+## Quick start (Linux / Raspberry Pi OS, Python 3.10+)
+
+Use a *new, separate directory* and avoid overwriting a running controller:
 
 ```bash
+git clone https://github.com/Otautahi/pulse-director.git
+cd pulse-director
 python3 -m unittest discover -s tests -q
-python3 -m py_compile edge_dashboard.py edge2_director.py edge2_https_pairing.py edge2_pairing_ui.py https-standard-probe/https_probe.py
 python3 edge_dashboard.py --profile lan --simulate --port 8876
 ```
 
-This simulation listens on `127.0.0.1:8876`. If using a headless Pi, an SSH tunnel can access it without exposing the service. The simulator does **not** control a real device.
+Simulation is loopback-only (`127.0.0.1:8876`) and sends no real motor commands. From a headless Pi, connect with an SSH tunnel. To test the UI's optional Hybrid layout without real cloud access, use `--profile hybrid --simulate --port 8876` instead.
 
-To test the hybrid UI without any credentials or device I/O:
-
-```bash
-python3 edge_dashboard.py --profile hybrid --simulate --port 8876
-```
-
-Before any live LAN test, explicitly provide **your own** phone address and a trusted local bind address, for example:
+For live **LAN-only** use, after reading the [installation guide](docs/INSTALL.md), connect *one* Edge 2 in Lovense Remote's Game Mode, keep the device **off-body** and start at the lowest level:
 
 ```bash
-python3 edge_dashboard.py --profile lan --phone YOUR_PHONE_GAME_MODE_IP --bind YOUR_PI_LOCAL_IP --port 8876 --no-print-key
+python3 edge_dashboard.py --profile lan --phone YOUR_PHONE_GAME_MODE_IP --bind YOUR_PI_TRUSTED_LAN_IP --port 8765 --no-print-key
 ```
 
-The first run writes a local random `.edge_dashboard_key` next to the script, mode 0600. Keep the key private. Never forward dashboard HTTP ports to the public internet; use a trusted LAN or WireGuard. Cloud pairing requires separate deployment and a callback HTTPS endpoint. This source bundle does **not** include configured systemd service files, ngrok credentials or a verified public installer.
+The web dashboard uses HTTP with a locally generated access key (`.edge_dashboard_key` beside the script, owner-only file). It is **not internet-safe**: **never port-forward** the web UI. Use a trusted LAN or carefully configured private VPN only. Do not publish access keys, IP addresses or pairing tokens.
 
-## Quiet Stop
+For HTTPS/cloud background, see [Hybrid setup and limits](docs/HYBRID.md). Hybrid needs separately operated callback/pairing infrastructure; this repository does **not** automatically deploy or enable it.
 
-After a successful intentional cloud Stop or timer expiry, the dashboard quietly returns to Standby. The cloud physical-off confirmation is still enforced **before another Start**. A connection failure or undelivered Stop remains a prominent fault. An accepted HTTPS API response is **not** proof that a physical motor stopped.
+## Safety limitations
 
-## Known limits and release gates
+**The controller cannot guarantee physical Stop during loss of Bluetooth, Wi-Fi, phone connectivity or cloud access.** A successful API response does not verify motor state. A previous off-body LAN test observed *brief renewed vibration on Bluetooth reconnection* before an automatic recovery Stop. Keep the physical power button reachable and physically stop/power off if behavior is unexpected. Never assume remote Stop is a hardware fail-safe.
 
-1. This candidate passed offline Python tests on the development machine. **No live Pi service or real hardware was touched**, and public v4.5 regression tests still require separate cross-version confirmation on the unified branch.
-2. The public v4.5 release documented brief reactivation on Bluetooth reconnect before the recovery Stop succeeded. Physical Stop under link loss cannot be guaranteed.
-3. Cloud HTTPS callbacks reflect past events, not continuous device connectivity. Extended cloud sessions need particular caution.
-4. The API vendor's distribution terms remain under review; publication to the development branch does not mean a stable, certified or Lovense-endorsed release.
-5. This is Edge 2 only; model validation must not select an arbitrary connected device.
-6. For Pi deployment, first stage outside the running `private/` tree and preserve an offline/timestamped backup. Do not change the live `edge2-dashboard`, callback, ngrok, Pi-hole, WireGuard, FlightTracker or PS3 services until owner-approved off-body validation.
+LAN/Hybrid sessions pin the transport used to start a session; a failure latches a fault and blocks auto-resume. Cloud Stop requires separate physical-off acknowledgment before another Start; cloud callbacks indicate past pairing, not live device heartbeat. Testing was performed with simulated faults and limited owner-observed off-body tests on one Edge 2, **not** independently certified across devices or firmware.
 
-## Files included
+## Install, help and history
 
-- `edge_dashboard.py`: shared web UI, session engine, explicit runtime profiles, guarded hybrid transport, Quiet Stop.
-- `edge2_director.py`: unchanged common Autonomous Director.
-- `edge2_https_pairing.py`, `edge2_pairing_ui.py`: HTTPS pairing and QR presentation.
-- `https-standard-probe/https_probe.py`: separately authenticated callback helper (not an unattended cloud-control daemon).
-- `tests/`: private regression suite plus new unified profile checks.
+- [Installation and startup](docs/INSTALL.md) · [Security and deployment](docs/SECURITY.md) · [Hybrid Cloud limitations](docs/HYBRID.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md) · [Release checklist](docs/RELEASE_CHECKLIST.md) · [Changelog](CHANGELOG.md)
+- The original **v4.5 LAN-only edition** is preserved in the [`release/v4.5.0-lan-rc1` branch](https://github.com/Otautahi/pulse-director/tree/release/v4.5.0-lan-rc1). The legacy branch and Git history are retained; this v4.6 tree is the unified current codebase.
 
-The older Socket.IO `edge2_cloud_keeper.py` and `controller.py` were intentionally **excluded from the unified runtime package**: they are not active dependencies of the current HTTPS architecture and contain obsolete per-home assumptions. Keep them in archived private history rather than silently reintroducing them.
+The MIT licence covers this project's own source. Lovense API/developer terms and trademark rights are separate; see the [licensing caveat](docs/SECURITY.md) and [issue #4](https://github.com/Otautahi/pulse-director/issues/4). This source release does not imply vendor endorsement or permission beyond those terms.

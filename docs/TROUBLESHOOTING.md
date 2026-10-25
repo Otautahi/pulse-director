@@ -1,43 +1,25 @@
-# Troubleshooting — LAN Edition
+# Troubleshooting PulseDirector v4.6
 
-This edition only communicates with the **Lovense Remote Game Mode LAN API**; it has no Cloud Keeper or cloud fallback. All examples below use placeholders; do not post your real network addresses or credentials.
+## Dashboard doesn't open
 
-## Can't open the dashboard
+The app binds to **127.0.0.1** by default. On a headless Pi, use an SSH tunnel, or pass `--bind YOUR_PI_TRUSTED_LAN_IP` and browse to `http://YOUR_PI_TRUSTED_LAN_IP:PORT` from a trusted device. The default port is 8765; use 8876 for separate simulation. Never port-forward this HTTP UI to the public internet.
 
-- The app binds to `127.0.0.1` by default. That is reachable **only from the same machine** (or an SSH tunnel).
-- For a browser on another trusted device, start with `--bind YOUR_PI_LAN_IP` and open `http://YOUR_PI_LAN_IP:8765`.
-- Make sure the Pi service is still running and that your firewall permits only trusted clients.
-- Confirm no other service is already listening on the port. To change it, use `--port 8766` and update the URL accordingly.
-- Never expose the HTTP dashboard via router port-forwarding or a public proxy.
+If the browser displays **Failed to fetch**, refresh the page fully after restarting the server, check the correct bind address/port, and check that the access key is current. The dashboard key is stored in `.edge_dashboard_key` beside `edge_dashboard.py` and should not be shared in reports.
 
-## The dashboard asks for an access key
+## Edge 2 not detected on LAN
 
-The key is printed when PulseDirector starts. It is also stored in `.edge_dashboard_key` beside the script. Read it **locally on your own Pi**. Never publish the key in a GitHub issue or screenshot. If another person may have obtained it, stop the program and arrange to rotate the key before further use.
+Confirm Lovense Remote is running with **Game Mode** enabled, the phone and Pi can reach each other over the LAN, and the `--phone` IP is the *phone's* Game Mode address. Guest isolation, VPN routing and Wi-Fi disconnection may block access. Disconnect unsupported toys; this version requires **exactly one recognized Edge 2**. Don't override validation to force a Max 2 or ambiguous device.
 
-## Phone / Game Mode connection failed
+## Hybrid cloud status is unclear
 
-- Enable Game Mode inside Lovense Remote on the **same phone paired to Edge 2**.
-- Use the **phone's Game Mode IPv4 address** for `--phone`, not the Pi's address.
-- Keep the phone on Wi-Fi; avoid guest Wi-Fi/client isolation, restrictive VLAN firewalls and mobile-network-only operation.
-- Do not point the app at the cloud API or a developer endpoint; this build uses the phone's port `20010`.
-- Never disable network security or expose the dashboard to the internet to work around a connection issue.
+Hybrid is **optional**. `--profile hybrid` enables the diagnostics/pairing interface, but it does not automatically permit cloud motor commands. A token, authenticated callback/pairing and an explicit owner-only local enable flag are required. Old callback timestamps do not establish current app connectivity. See [HYBRID.md](HYBRID.md).
 
-## Unknown device or multiple devices rejected
+If cloud control was disabled or the flag removed while running, **restart the controller** after deliberate reconfiguration; putting the flag back cannot re-arm the same process. Cloud Stop API acceptance does not prove the device physically stopped; follow physical power-off prompts.
 
-The release candidate deliberately refuses to start when it cannot positively identify **one connected Edge 2**. Disconnect Max 2 and any other toys. If your Edge 2 is reported under an unexpected model name, do **not** bypass validation. Report only a sanitized, non-identifying description of the model fields and firmware.
+## Fault latch or disconnect
 
-## Red fault warning / automatic Stop pending
+A connection failure causes Stop attempts and may lock new sessions. Do not try to bypass the latch. Keep the device off-body for testing, power off physically when necessary, allow route-pinned recovery Stop attempts, then acknowledge only as the UI instructs. Bluetooth/Wi-Fi failure can prevent Stop delivery; brief unintended vibration on reconnect remains possible.
 
-A detected Bluetooth/Wi-Fi/Game Mode failure ends the session and attempts Stop. If the phone or toy cannot receive the command, the dashboard **cannot verify physical inactivity**. Keep the device off-body during tests and power it off physically if it continues vibrating. Once exactly one Edge 2 reconnects, the controller retries Stop. The red warning intentionally stays visible until the phone API has accepted recovery Stop commands and you **check the physical toy and acknowledge**. A brief vibration can occur on Bluetooth reconnection before the Stop reaches the toy. Do not bypass this fault latch. If the warning stays pending, check Game Mode, Bluetooth and Wi-Fi; do not assume the 00:00 timer means physical Stop.
+## Python tests fail
 
-## Director doesn't start, or Stop seems delayed
-
-- Check the session timer, maximum intensity cap and whether the device is actually connected.
-- A simulated test checks software behaviour, not the real Bluetooth link.
-- A failed network or Bluetooth connection can prevent delivery of Stop; **physically disconnect or turn off the device** immediately when required.
-- Do not treat a command counter, API 200 response or stale telemetry as evidence that physical motion occurred.
-- An interrupted session should never be resumed without a deliberate fresh Start.
-
-## Asking for help safely
-
-For issues, include the application version, Python version, whether you're using `--simulate`, and steps to reproduce. **Remove** phone/Pi IPs, usernames, private file paths, dashboard keys, device IDs, pairing QR data, timestamps linked to your activity and authentication headers. Never attach raw working-directory backups or private runtime logs.
+Run `python3 --version` (requires 3.10+) and `python3 -m unittest discover -s tests -v` from the **root of the repository**. Do not run multiple live copies against the same toy. If reporting a bug, include only sanitized error text without IPs, QR codes, tokens, access keys, device identifiers or live session logs.

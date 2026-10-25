@@ -1728,7 +1728,7 @@ def main():
     p.add_argument("--phone", default=DEFAULT_PHONE, help="Phone IP from Lovense Remote Game Mode; required for live LAN control")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--bind", default="127.0.0.1", help="Listening interface; loopback by default, specify trusted LAN IP explicitly")
-    p.add_argument("--profile", choices=("lan", "hybrid"), default="hybrid",
+    p.add_argument("--profile", choices=("lan", "hybrid"), default="lan",
                    help="lan disables cloud pairing/commands; hybrid enables optional HTTPS cloud")
     p.add_argument("--no-print-key", action="store_true", help="Do not print the access key (recommended with systemd)")
     p.add_argument("--uid", default="local-owner", help="Legacy identifier (ignored by HTTPS cloud transport)")
@@ -1749,7 +1749,7 @@ def main():
         raise
     http.engine, http.key = engine, key
     http.pair_qr = PairingQRManager()
-    print("\n  EDGE 2 — HOME LAN + HTTPS CLOUD DASHBOARD\n")
+    print("\n  PulseDirector v4.6 — Edge 2 Controller\n")
     print(f"  Open:       http://{args.bind}:{args.port}")
     if not args.no_print_key:
         print(f"  Access key: {key}")

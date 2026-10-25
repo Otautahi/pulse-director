@@ -1,33 +1,27 @@
-# v4.6 unified hybrid — security and verification gates
+# v4.6 — security boundaries and verification
 
-## Source control
+## Scope
 
-Do not commit any `.edge_dashboard_key`, `.edge_cloud_token`, `.edge_https_cloud_enabled`, `.https_probe_config.json`, `.https_probe_status.json`, callbacks, pairing artifacts, session records, logs or private `systemd`/ngrok credentials. Do not share a running device ID or the endpoint's configured personal callback URL. Only example values in documentation; keep working credentials outside the repository.
+The default **LAN-only** profile uses the Lovense Remote phone Game Mode API on a trusted LAN. The **Hybrid** profile is optional and allows guarded, experimental cloud use only when separately configured and enabled. Neither profile is a physical fail-safe. The web dashboard itself uses a local shared key over HTTP, and must never be publicly port forwarded.
 
-The app's current HTTP access key is suitable **only** on a trusted private LAN or private VPN, not a public port forward. The HTTPS Cloud integration contacts Lovense over TLS, but it does not make the browser dashboard an internet-safe website. The public development branch does not have a complete threat model or independent security audit.
+No dashboard keys, cloud tokens, pairing status, QR images, private callback addresses, session logs or live systemd/ngrok credentials belong in the source tree or Git history. `.gitignore` alone is insufficient to sanitize earlier Git commits.
 
-## Preserved guarantees (software, not physical)
+## Verified software behavior
 
-- Stop outranks concurrent Start, Test and pattern switch; generation and I/O locks protect against stale commands after Stop.
-- Device name/connected count are verified. Any unrecognised or multiple reported devices must not be selected.
-- Session transport remains pinned; errors do not silently switch to another route mid-session.
-- Faults are latched and explicitly re-armed; ordinary cloud Stop confirmation is deferred, never automatically bypassed.
-- HTTPS callback is historical pairing evidence, not a live motor heartbeat. The active physical state is UNKNOWN after cloud command acceptance.
-- No motor command may run in a `--simulate` test.
+- Stop takes priority over delayed Start/Test and pattern switching; stale generation commands must not restart output.
+- Exactly one recognized Edge 2 is required; Max 2 and other toys are not supported.
+- Active transport is pinned to its initial route. Link failures latch faults, issue Stop/recovery attempts, and prevent automatic resumption.
+- Cloud activation is opt-in, checked at runtime, and revoked for the process if the owner-only activation flag is removed or compromised; new cloud motor commands are blocked, while Stop requests remain possible.
+- Cloud callbacks are historical pairing records, **not** a live heartbeat. A cloud server response never verifies actual motor inactivity. Physical power-off is required before cloud rearm.
+- The simulation profile must never contact device or vendor APIs.
 
-## Hardware acceptance checklist — after code review, off-body only
+## Evidence (25 October 2026)
 
-- [ ] LAN-only simulator and hybrid simulator on separate port (8876), access key respected
-- [ ] Real Edge 2 test: independent Motor 1/Motor 2 output and manual Stop
-- [ ] Timer expiry: quiet Standby, no false connection-warning panel
-- [ ] Cloud Stop: quiet completion, confirmation before next Start, with no motor output before re-arm
-- [ ] Wi-Fi, Bluetooth and cloud failure during run: visible immediate fault and no unintended auto-resume
-- [ ] Reconnect: Stop reconciliation; record any transient physical motion
-- [ ] Pairing code/QR: only shown after authenticated explicit request, no URLs or tokens in logs
-- [ ] Public LAN profile: cloud endpoint refused without any token reads
-- [ ] Backup, clean install, CLI flags, updates and rollback checked on a different Linux/Pi installation
-- [ ] Clarify vendor/API terms, no stable tag before approval
+- 163 offline regression tests passed on the owner's Raspberry Pi 3B+, including six Dev4 runtime-gate tests.
+- A distinct GitHub review checkout passed all 163 offline tests, with 12 repeated pattern-switch checks.
+- GitHub Actions workflow #135 for consolidated Dev4 commit `7b51511` passed all configured jobs on Python 3.10, 3.11, 3.12, 3.13.
+- Owner-observed limited off-body Motor 1, Motor 2, manual and timed Stop pilots. LAN active fault and HTTPS fault scenarios were simulated or mocked. No claim of safe motor behavior during all real network failures.
 
-## Test counts
+## Open release risks
 
-Development-machine unit tests (mocked/no physical I/O): original private v4.6 dev1 suite 94 tests, plus unified profile checks in `test_unified_profiles_v46.py`. Public LAN regression tests in `main` remain preserved and need to run against this branch in GitHub CI; don't add the two counts together until confirmed.
+Fresh installation portability, private backup/rollback integration, callback security, vendor terms and safe production cutover remain subject to review. Keep cloud disabled until properly configured and assessed. This code is an **experimental controller**, not a certified safety mechanism.
