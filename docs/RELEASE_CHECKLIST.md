@@ -6,6 +6,7 @@
 - [x] Owner ran 163 offline regression tests on Raspberry Pi 3B+ and targeted Dev4 cloud-revocation tests
 - [x] GitHub Actions run #135 passed unit tests, Python compilation and CLI help on Python 3.10/3.11/3.12/3.13
 - [x] Offline idle LAN route recovery, active LAN link-loss and cloud fault simulations passed; no real device commands in simulations
+- [x] Following the recovery fix, owner-reported simulated and off-body Bluetooth disconnect/reconnect retests did not reproduce the previously observed unwanted vibration (one Edge 2; no general safety certification)
 - [x] Limited off-body Edge 2 hardware pilots exercised Motor 1/Motor 2 and automatic Stop; these are not general fail-safe certification
 - [x] Public LAN profile refuses cloud pairing; cloud flag absent by default
 

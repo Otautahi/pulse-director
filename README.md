@@ -68,7 +68,7 @@ For HTTPS/cloud background, see [Hybrid setup and limits](docs/HYBRID.md). Hybri
 
 ## Safety limitations
 
-**The controller cannot guarantee physical Stop during loss of Bluetooth, Wi-Fi, phone connectivity or cloud access.** A successful API response does not verify motor state. A previous off-body LAN test observed *brief renewed vibration on Bluetooth reconnection* before an automatic recovery Stop. Keep the physical power button reachable and physically stop/power off if behavior is unexpected. Never assume remote Stop is a hardware fail-safe.
+**The controller cannot guarantee physical Stop during loss of Bluetooth, Wi-Fi, phone connectivity or cloud access.** A successful API response does not verify motor state. An earlier off-body LAN test observed *brief renewed vibration on Bluetooth reconnection* before recovery Stop. After recovery changes, the owner retested Bluetooth disconnect/reconnect in simulation and with the Edge 2 off-body; **the unintended vibration was not observed again in those tests**. This supports the software regression fix, but it does not prove physical Stop under every failure condition. Keep the physical power button reachable and power off if behavior is unexpected.
 
 LAN/Hybrid sessions pin the transport used to start a session; a failure latches a fault and blocks auto-resume. Cloud Stop requires separate physical-off acknowledgment before another Start; cloud callbacks indicate past pairing, not live device heartbeat. Testing was performed with simulated faults and limited owner-observed off-body tests on one Edge 2, **not** independently certified across devices or firmware.
 

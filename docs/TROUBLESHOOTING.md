@@ -18,7 +18,7 @@ If cloud control was disabled or the flag removed while running, **restart the c
 
 ## Fault latch or disconnect
 
-A connection failure causes Stop attempts and may lock new sessions. Do not try to bypass the latch. Keep the device off-body for testing, power off physically when necessary, allow route-pinned recovery Stop attempts, then acknowledge only as the UI instructs. Bluetooth/Wi-Fi failure can prevent Stop delivery; brief unintended vibration on reconnect remains possible.
+A connection failure causes Stop attempts and may lock new sessions. Do not try to bypass the latch. Keep the device off-body for testing, power off physically when necessary, allow route-pinned recovery Stop attempts, then acknowledge only as the UI instructs. An earlier off-body Bluetooth reconnection test showed brief unintended vibration; after the recovery fix, the owner reported that simulated and off-body retests did **not** reproduce it. Bluetooth/Wi-Fi failure can still prevent Stop delivery, and behaviour under other failures is not guaranteed.
 
 ## Python tests fail
 
