@@ -13,7 +13,7 @@
 ## Physical limits
 
 - Supports only one connected, recognized Edge 2. Max 2/multiple toy control is not implemented.
-- Stop, short command durations, fault latches and recovery are best-effort safeguards. Network/Bluetooth failures can delay or block Stop; transient vibration may occur when communication returns. Earlier off-body LAN testing observed brief vibration on Bluetooth reconnection before automatic Stop.
+- Stop, short command durations, fault latches and recovery are best-effort safeguards. Network/Bluetooth failures can delay or block Stop; physical motor state cannot be guaranteed during an outage. An earlier off-body LAN test observed brief vibration on Bluetooth reconnection before automatic Stop. Following recovery fixes, the owner reported simulated and off-body Bluetooth disconnect/reconnect retests on one Edge 2 **without recurrence of the unwanted vibration**. This is a regression result, not a general physical Stop guarantee; unexpected motion on reconnection remains a risk under untested conditions.
 - For cloud Stop or cloud recovery, physically switch off the device before acknowledging to rearm. Always keep immediate access to a real power button/physical disconnect; test off-body at low intensity before any new release.
 - Tests and an API `200` do not constitute physical safety certification or a guarantee across devices/firmware.
 

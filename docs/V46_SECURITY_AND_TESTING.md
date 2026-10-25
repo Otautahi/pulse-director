@@ -20,7 +20,7 @@ No dashboard keys, cloud tokens, pairing status, QR images, private callback add
 - 163 offline regression tests passed on the owner's Raspberry Pi 3B+, including six Dev4 runtime-gate tests.
 - A distinct GitHub review checkout passed all 163 offline tests, with 12 repeated pattern-switch checks.
 - GitHub Actions workflow #135 for consolidated Dev4 commit `7b51511` passed all configured jobs on Python 3.10, 3.11, 3.12, 3.13.
-- Owner-observed limited off-body Motor 1, Motor 2, manual and timed Stop pilots. LAN active fault and HTTPS fault scenarios were simulated or mocked. No claim of safe motor behavior during all real network failures.
+- Owner-observed limited off-body Motor 1, Motor 2, manual and timed Stop pilots. The owner also reported follow-up Bluetooth disconnect/reconnect tests, both simulated and with one Edge 2 off-body, in which the earlier brief unintended vibration did **not** recur after the recovery changes. LAN active fault and HTTPS fault scenarios were also simulated or mocked. No claim of safe motor behavior during all real network failures.
 
 ## Open release risks
 
