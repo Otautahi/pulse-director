@@ -15,6 +15,7 @@ import math
 import os
 from pathlib import Path
 import random
+import stat
 from edge2_director import AutonomousDirector, STYLES, FLOWS
 import subprocess
 import secrets
@@ -35,7 +36,8 @@ RANDOM_MODES = ("wave", "pulse", "alternate", "chase", "sync", "ramp",
                 "anchor", "heartbeat", "orbit", "cascade", "flutter", "tide", "echo", "drift", "steps", "ripple")
 DEFAULT_PHONE = "127.0.0.1"  # Users must provide their own Lovense Remote Game Mode IP
 CLOUD_ENDPOINT = "https://api.lovense-api.com/api/lan/v2/command"
-CLOUD_TOKEN_FILE = Path(__file__).resolve().parent / ".edge_cloud_token"
+CLOUD_TOKEN_FILE = Path(os.environ.get("PULSEDIRECTOR_CLOUD_TOKEN_FILE") or
+                        str(Path(__file__).resolve().parent / ".edge_cloud_token"))
 KEY_FILE = Path(__file__).resolve().parent / ".edge_dashboard_key"
 KEEPER_FILE = Path(__file__).resolve().parent / ".edge_cloud_keeper_status.json"
 KEEPER_STALE_SECONDS = 25
@@ -759,7 +761,8 @@ class HybridEngine(Engine):
         self.uid = uid  # Retained for systemd CLI compatibility, never sent to HTTPS cloud.
         self.cloud_session_uid = None  # Pinned HTTPS callback UID; not the old pi-owner UID.
         self.cloud_fault_utc = None  # Reconnect event must be strictly newer than fault.
-        self.https_cloud_enabled = HTTPS_ENABLE_FLAG.is_file()
+        self.https_cloud_enabled = self._valid_cloud_flag()
+        self._cloud_gate_revoked = False  # Removal permanently disables cloud until restart.
         self.active_route = "simulation" if simulate else "unknown"
         self.connection_loss_notice = False
         self.cloud_last_success = None
@@ -773,6 +776,26 @@ class HybridEngine(Engine):
         super().__init__(phone, simulate=simulate)
         self.keeper_watch = threading.Thread(target=self._keeper_watch_loop, name="keeper-watch", daemon=True)
         self.keeper_watch.start()
+
+    @staticmethod
+    def _valid_cloud_flag():
+        "Owner-only regular file, never a symlink. Presence is not a heartbeat."
+        try:
+            info = HTTPS_ENABLE_FLAG.lstat()
+        except OSError:
+            return False
+        return (stat.S_ISREG(info.st_mode) and
+                info.st_uid == os.geteuid() and
+                not (info.st_mode & 0o077))
+
+    def _cloud_enabled_now(self):
+        "Fail closed on revocation. Flag recreation cannot re-arm this process."
+        if not self.https_cloud_enabled or self._cloud_gate_revoked:
+            return False
+        if not self._valid_cloud_flag():
+            self._cloud_gate_revoked = True
+            return False
+        return True
 
     def _paired_status(self):
         """Event-only HTTPS pairing state; NEVER a live Bluetooth heartbeat."""
@@ -831,6 +854,8 @@ class HybridEngine(Engine):
             is_cloud = self.active_route == 'cloud' and self.mode != 'idle'
             uid = self.cloud_session_uid
         if is_cloud:
+            if not self._cloud_enabled_now():
+                raise RuntimeError('Cloud activation revoked; cancelling motor session')
             try:
                 pair = self._paired_status()
             except PairingError as exc:
@@ -879,6 +904,9 @@ class HybridEngine(Engine):
                 cloud_running = self.mode != "idle" and self.active_route == "cloud"
                 pinned_uid = self.cloud_session_uid
             if cloud_running:
+                if not self._cloud_enabled_now():
+                    self._abort_cloud_session('Cloud activation revoked while running')
+                    continue
                 try:
                     paired = self._paired_status()
                 except PairingError:
@@ -934,6 +962,10 @@ class HybridEngine(Engine):
             raise RuntimeError("No pinned, verified HTTPS pairing UID; refusing cloud command")
         body = {**payload, "token": self.token, "uid": self.cloud_session_uid}
         action = str(payload.get('action', ''))
+        # A disabled cloud gate MUST NOT block Stop/recovery Stop, but no
+        # other command can reach the real network transport after revocation.
+        if action != 'Stop' and not self._cloud_enabled_now():
+            raise RuntimeError('Cloud activation revoked; refusing cloud motor command')
         try:
             proc = subprocess.run(
                 ["curl", "-q", "-sS", "--proto", "=https", "--max-redirs", "0",
@@ -998,8 +1030,8 @@ class HybridEngine(Engine):
     def _cloud_start_readiness(self, keeper):
         # Callback pairing is historic. A STOP-only HTTPS round trip immediately
         # before Start/Test is the real-time SERVER ACCEPTANCE preflight.
-        if not self.https_cloud_enabled:
-            return False, 'Experimental HTTPS cloud is disabled until off-body pilot succeeds.'
+        if not self._cloud_enabled_now():
+            return False, 'Experimental HTTPS cloud is disabled or revoked; restart required to re-enable.'
         if not self.token:
             return False, 'Cloud developer token missing.'
         if self._cloud_507_blocked(keeper):
@@ -1041,6 +1073,8 @@ class HybridEngine(Engine):
             with self.state_lock:
                 self.cloud_session_uid = pair['uid']
             self._cloud_stop_preflight()
+            if not self._cloud_enabled_now():
+                raise RuntimeError('Cloud activation revoked during Stop-only preflight')
             route = "cloud"
         return route
 
@@ -1062,6 +1096,8 @@ class HybridEngine(Engine):
             extended = body.get('untilStopped', False) or requested * 60 > 60
             if extended and body.get('acceptExtendedCloudRisk') is not True:
                 raise RuntimeError('Extended cloud session requires confirming the cloud safety limitations. Stop delivery may be unverified.')
+        if route == 'cloud' and not self._cloud_enabled_now():
+            raise RuntimeError('Cloud activation revoked before Start')
         result = super().start(body, expected_stop_epoch=epoch, route=route)
         with self.state_lock:
             if self.stop_epoch == epoch and self.mode != "idle":
@@ -1096,6 +1132,8 @@ class HybridEngine(Engine):
         if was_running:
             self.stop("Starting motor test", cancel_pending=False)
         route = self._choose_route()
+        if route == 'cloud' and not self._cloud_enabled_now():
+            raise RuntimeError('Cloud activation revoked before Test')
         result = super().test(expected_stop_epoch=epoch, route=route)
         return self.status()
 
@@ -1206,10 +1244,11 @@ class HybridEngine(Engine):
             result["connectionMode"] = route
             result["profile"] = "hybrid"
             result["cloudConfigured"] = bool(self.token)
+            result["cloudPairingSource"] = ("shared-read-only" if os.environ.get("PULSEDIRECTOR_HTTPS_PROBE_DIR") else "local")
             result["cloudCommandAccepted"] = self.cloud_last_success is not None
             result["cloudConnected"] = False  # No live heartbeat from HTTPS callback.
             result["cloudPairingConfirmed"] = bool(self.token and keeper.get("paired", False))
-            result["cloudExperimentalEnabled"] = self.https_cloud_enabled
+            result["cloudExperimentalEnabled"] = self._cloud_enabled_now()
             result["cloudLastCommand"] = dict(self.cloud_command_record)
             result["cloudApiAcceptedTotal"] = self.cloud_api_accept_count
             result["cloudApiRejectedTotal"] = self.cloud_api_reject_count
@@ -1306,7 +1345,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 </style></head><body>
 <div class="wrap">
-<div class="top"><div class="mark"><div class="logo">✦</div><div><div class="overline">PRIVATE DEVICE STUDIO</div><div class="title">Pulse<span class="brand-accent">Director</span><span class="version">v4.6 dev1</span></div></div></div><div class="chip"><i class="dot" id="dot"></i><span id="pill">Standby</span></div></div>
+<div class="top"><div class="mark"><div class="logo">✦</div><div><div class="overline">PRIVATE DEVICE STUDIO</div><div class="title">Pulse<span class="brand-accent">Director</span><span class="version">v4.6 dev4</span></div></div></div><div class="chip"><i class="dot" id="dot"></i><span id="pill">Standby</span></div></div>
 <section class="panel"><div class="eyebrow">ON AIR <span class="status-overline">/ YOUR SESSION</span></div><div class="status-box"><div><div class="status-name" id="current">Ready to start</div><div class="status-message" id="msg">Connect Lovense Remote on home Wi-Fi and enable Game Mode.</div></div><div class="timebox"><div class="countdown" id="left">00:00</div><div class="tiny" id="timerLabel">remaining</div></div></div>
 <div class="progress-track" aria-label="Session progress"><div id="sessionProgress" class="progress-fill"></div></div>
 <div class="scene-strip"><span class="scene-chip" id="stageChip">Waiting for session</span><span class="scene-chip subtle" id="sceneChip">Live scene: —</span></div>
@@ -1379,10 +1418,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <button class="start" id="start">▶ &nbsp; START AUTONOMOUS DIRECTOR</button><p class="muted">During a running session, selecting a different pattern and pressing this button switches patterns without restarting the session or its timer.</p>
 </section>
 <section class="panel"><div class="sectionhead"><h2>Individual motors</h2><span class="sub">Sliders enter Manual mode</span></div><div class="rows"><div class="range-wrap"><div class="motor-name"><b>Motor 1 · prostate-facing</b><span class="motor-read" id="m1Val">4 / 20</span></div><input id="m1" type="range" min="0" max="20" value="4"><div class="meter"><div class="fill" id="bar1"></div></div></div><div class="range-wrap"><div class="motor-name"><b>Motor 2 · perineum</b><span class="motor-read" id="m2Val">4 / 20</span></div><input id="m2" type="range" min="0" max="20" value="4"><div class="meter"><div class="fill" id="bar2"></div></div></div></div><p class="muted">Moving either slider during a session changes to Manual without resetting the session timer. Levels remain capped by Maximum intensity.</p><div class="tools"><button class="secondary" id="manual">▶ Run manual levels</button><button class="secondary" id="test">Test both motors (7 sec)</button><button class="secondary" id="check">Check connection</button></div></section>
-<p class="footer">PulseDirector v4.6 unified dev2 · LAN or optional HTTPS hybrid · Experimental cloud integration; off-body testing required.<br>WireGuard keeps your dashboard private when away from home. Never forward port 8765 to the public internet.</p>
+<p class="footer">PulseDirector v4.6 safety-gate dev4 · LAN or optional HTTPS hybrid · Experimental cloud integration; off-body testing required.<br>WireGuard keeps your dashboard private when away from home. Never forward port 8765 to the public internet.</p>
 </div>
 <div class="stop-dock hide" id="stopDock"><span>Session running</span><button type="button" id="dockStop" aria-label="Stop all motors immediately">■ STOP ALL</button></div>
-<div class="modal" id="login"><form class="login" id="loginForm"><div class="overline">LOCAL DEVICE CONTROL</div><h2 style="margin:12px 0 7px">Unlock dashboard</h2><p class="muted">Enter the access key shown in the Raspberry Pi terminal on first launch. It is also saved in <code>~/edge-ai/.edge_dashboard_key</code>.</p><label class="tiny" for="key">Access key</label><input id="key" type="password" autocomplete="off" required placeholder="Paste your access key"><button class="start" type="submit">Unlock controls</button><div class="error" id="loginError"></div></form></div>
+<div class="modal" id="login"><form class="login" id="loginForm"><div class="overline">LOCAL DEVICE CONTROL</div><h2 style="margin:12px 0 7px">Unlock dashboard</h2><p class="muted">Enter the access key shown in the Raspberry Pi terminal on first launch. It is saved beside this development dashboard as <code>.edge_dashboard_key</code>.</p><label class="tiny" for="key">Access key</label><input id="key" type="password" autocomplete="off" required placeholder="Paste your access key"><button class="start" type="submit">Unlock controls</button><div class="error" id="loginError"></div></form></div>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
@@ -1452,9 +1491,9 @@ $('level1').textContent=(s.motor1||0)+' / 20';$('level2').textContent=(s.motor2|
 $('battery').textContent=s.battery==null?'—':s.battery+'%'+(s.batteryIsStale?'*':'');$('batteryBar').style.width=s.battery==null?'0%':s.battery+'%';
 $('batteryNote').textContent=(s.batterySource||'No report')+(s.batteryIsStale?' · last known, not live':' · last reported');
 const home=s.connectionMode==='lan', cloud=s.connectionMode==='cloud', paired=s.cloudPairingConfirmed===true, ready=paired&&s.cloudExperimentalEnabled===true&&s.cloudCanStart===true, cachedRoutine=paired&&routineCloudStop, uncertain=true;
-$('connection').textContent=home?(s.toyConnected===true?'Connected (LAN)':'LAN unavailable'):ready?'HTTPS paired (unverified)':cachedRoutine?'HTTPS pairing cached':cloud?(s.cloudLastErrorCode===507?'Cloud error 507':'Cloud offline'):'Not connected';
+$('connection').textContent=home?(s.toyConnected===true?'Local API reachable':'LAN unavailable'):ready?'HTTPS paired (unverified)':cachedRoutine?'HTTPS pairing cached':cloud?(s.cloudLastErrorCode===507?'Cloud error 507':'Cloud offline'):'Not connected';
 $('connection').className='stat-number small-number '+((home&&s.toyConnected===true)||ready?'online':cachedRoutine?'':'danger');
-$('connectionNote').textContent=home?(s.toyConnected===true?'Home Wi-Fi Game Mode':s.lastDeviceError||'LAN unavailable'):(ready?'HTTPS callback cached; API/physical delivery not guaranteed':cachedRoutine?'Cloud Stop accepted; confirm device off before restarting':(s.cloudKeeperMessage||'Cloud connection unavailable'));
+$('connectionNote').textContent=home?(s.toyConnected===true?'Lovense local API responding; Game Mode setting unverified':s.lastDeviceError||'LAN unavailable'):(ready?'HTTPS callback cached; API/physical delivery not guaranteed':cachedRoutine?'Cloud Stop accepted; confirm device off before restarting':(s.cloudKeeperMessage||'Cloud connection unavailable'));
 $('cloudDot').className='cloud-indicator bad';
 $('cloudStatus').textContent=paired?'HTTPS pairing: cached, online unknown':'HTTPS pairing: '+(s.cloudKeeperState||'unavailable').replaceAll('_',' ');
 $('cloudAge').textContent=s.cloudKeeperAgeSec==null?'':' · checked '+s.cloudKeeperAgeSec+'s ago';
@@ -1644,6 +1683,23 @@ class Handler(BaseHTTPRequestHandler):
             self._json(503, {"error": str(exc)})
 
 
+def read_cloud_token(path):
+    """Read a locally configured token; never follow symlinks or log contents."""
+    path = Path(path)
+    try:
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077:
+            raise RuntimeError('Cloud token must be a regular, owner-only file (0600)')
+        if not 1 <= info.st_size <= 4096:
+            raise RuntimeError('Cloud token size is invalid')
+        token = path.read_text(encoding='utf-8').strip()
+        if not token:
+            raise RuntimeError('Cloud token is empty')
+        return token
+    except (OSError, UnicodeError) as exc:
+        raise RuntimeError('Cloud token cannot be read safely') from exc
+
+
 def access_key():
     if KEY_FILE.exists():
         key = KEY_FILE.read_text(encoding="utf-8").strip()
@@ -1680,10 +1736,11 @@ def main():
     args = p.parse_args()
     key = access_key()
     token = ""
-    if args.profile == "hybrid" and not args.simulate and CLOUD_TOKEN_FILE.exists():
-        if CLOUD_TOKEN_FILE.stat().st_mode & 0o077:
-            raise RuntimeError(".edge_cloud_token must not be accessible by group or others; run chmod 600")
-        token = CLOUD_TOKEN_FILE.read_text(encoding="utf-8").strip()
+    if args.profile == "hybrid" and not args.simulate:
+        if CLOUD_TOKEN_FILE.is_symlink():
+            raise RuntimeError("Cloud token path is a symlink; refused")
+        if CLOUD_TOKEN_FILE.exists():
+            token = read_cloud_token(CLOUD_TOKEN_FILE)
     engine = build_engine(args.profile, args.phone, token=token, uid=args.uid, simulate=args.simulate)
     try:
         http = ThreadingHTTPServer((args.bind, args.port), Handler)

@@ -49,6 +49,12 @@ class PairTests(unittest.TestCase):
 
 class OfflineCloudTests(unittest.TestCase):
     def setUp(self):
+        self._temp_cloud_flag = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp_cloud_flag.cleanup)
+        self._cloud_flag_override = patch.object(dash, 'HTTPS_ENABLE_FLAG', pathlib.Path(self._temp_cloud_flag.name) / '.edge_https_cloud_enabled')
+        self._cloud_flag_override.start()
+        self.addCleanup(self._cloud_flag_override.stop)
+        dash.HTTPS_ENABLE_FLAG.touch(mode=0o600)
         self.e=dash.HybridEngine('127.0.0.1',token='FAKE-token',uid='pi-owner',simulate=False)
         self.e._local_api=lambda x:(_ for _ in ()).throw(RuntimeError('mock phone not on LAN'))
         self.e._paired_status=lambda:{'uid':'pd-https-fresh','updated_utc':datetime.now(timezone.utc).isoformat(),'age_seconds':60}

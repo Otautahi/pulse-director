@@ -1,12 +1,20 @@
 """Extended cloud session tests, all mocked; no hardware or network requests."""
 from datetime import datetime, timezone
 import sys, time, unittest
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import edge_dashboard as m
 
 class ExtendedCloudTests(unittest.TestCase):
     def setUp(self):
+        self._temp_cloud_flag = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp_cloud_flag.cleanup)
+        self._cloud_flag_override = patch.object(m, 'HTTPS_ENABLE_FLAG', Path(self._temp_cloud_flag.name) / '.edge_https_cloud_enabled')
+        self._cloud_flag_override.start()
+        self.addCleanup(self._cloud_flag_override.stop)
+        m.HTTPS_ENABLE_FLAG.touch(mode=0o600)
         self.e=m.HybridEngine('127.0.0.1', token='fake', uid='unused', simulate=False)
         self.e.https_cloud_enabled=True
         self.e._local_api=lambda p: (_ for _ in ()).throw(RuntimeError('No LAN'))

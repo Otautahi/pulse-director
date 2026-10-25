@@ -6,6 +6,7 @@ import json
 import pathlib
 import sys
 import threading
+import tempfile
 import time
 from datetime import datetime, timezone, timedelta
 import unittest
@@ -64,6 +65,12 @@ class HybridBackportTests(unittest.TestCase):
             time.sleep(.025)
         return bool(fn())
     def setUp(self):
+        self._temp_cloud_flag = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp_cloud_flag.cleanup)
+        self._cloud_flag_override = patch.object(m, 'HTTPS_ENABLE_FLAG', pathlib.Path(self._temp_cloud_flag.name) / '.edge_https_cloud_enabled')
+        self._cloud_flag_override.start()
+        self.addCleanup(self._cloud_flag_override.stop)
+        m.HTTPS_ENABLE_FLAG.touch(mode=0o600)
         self.fake=FakeIO()
         self.engine=m.HybridEngine('127.0.0.1',token='fake-offline-test-only',uid='test',simulate=False)
         self.engine._local_api=self.fake.lan

@@ -1,5 +1,7 @@
 """Offline session-extension tests; never send network or device commands."""
 import sys
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import threading
@@ -69,6 +71,12 @@ class LANSessionTests(unittest.TestCase):
 
 class CloudSessionTests(unittest.TestCase):
     def setUp(self):
+        self._temp_cloud_flag = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp_cloud_flag.cleanup)
+        self._cloud_flag_override = patch.object(m, 'HTTPS_ENABLE_FLAG', Path(self._temp_cloud_flag.name) / '.edge_https_cloud_enabled')
+        self._cloud_flag_override.start()
+        self.addCleanup(self._cloud_flag_override.stop)
+        m.HTTPS_ENABLE_FLAG.touch(mode=0o600)
         self.e=m.HybridEngine('127.0.0.1',token='not-real-token',uid='old',simulate=False)
         self.e._local_api=lambda p: (_ for _ in ()).throw(RuntimeError('LAN unavailable'))
         self.sent=[]
@@ -88,13 +96,23 @@ class CloudSessionTests(unittest.TestCase):
         self.assertFalse(self.e.status()['running'])
     def test_cloud_switch_does_not_stop_or_rearm(self):
         self.e.start({'mode':'wave','minutes':.5})
-        before=len(self.sent)
+        # Background cloud motor worker may send a normal Vibrate update at
+        # any time during an active session. Only STOP/preflight calls must
+        # remain unchanged when switching patterns; total calls need not.
+        stops_before=sum(p.get('action') == 'Stop' for p in self.sent)
+        self.assertGreaterEqual(stops_before, 1)  # initial STOP-only preflight
         before_end=self.e.end
+        before_start=self.e.started
+        before_route=self.e.active_route
+        before_uid=self.e.cloud_session_uid
         s=self.e.start({'mode':'pulse','minutes':120,'untilStopped':True})
         self.assertEqual(s['mode'],'pulse')
         self.assertEqual(before_end,self.e.end)
+        self.assertEqual(before_start,self.e.started)
+        self.assertEqual(before_route,self.e.active_route)
+        self.assertEqual(before_uid,self.e.cloud_session_uid)
         self.assertFalse(s['faultLatched'])
-        self.assertEqual(before,len(self.sent))
+        self.assertEqual(stops_before, sum(p.get('action') == 'Stop' for p in self.sent))
         self.assertFalse(s['untilStopped'])
     def test_cloud_switch_stale_callback_fails_closed(self):
         self.e.start({'mode':'wave','minutes':.5})

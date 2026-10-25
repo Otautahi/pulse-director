@@ -1,6 +1,7 @@
 """v4.6 quiet routine cloud Stop: fully mocked, NO device or external I/O."""
 from datetime import datetime, timezone
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -11,6 +12,12 @@ import edge_dashboard as pd
 
 class QuietStopTests(unittest.TestCase):
     def setUp(self):
+        self._temp_cloud_flag = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp_cloud_flag.cleanup)
+        self._cloud_flag_override = patch.object(pd, 'HTTPS_ENABLE_FLAG', Path(self._temp_cloud_flag.name) / '.edge_https_cloud_enabled')
+        self._cloud_flag_override.start()
+        self.addCleanup(self._cloud_flag_override.stop)
+        pd.HTTPS_ENABLE_FLAG.touch(mode=0o600)
         self.e = pd.HybridEngine('127.0.0.1', token='non-secret-test-token', uid='test-only', simulate=False)
         self.e._local_api = lambda p: (_ for _ in ()).throw(RuntimeError('mock LAN unavailable'))
         self.e.https_cloud_enabled = True

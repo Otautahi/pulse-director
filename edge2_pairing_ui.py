@@ -4,6 +4,7 @@ This module does NOT change device control or callback handling. The external
 https_probe.py remains the single owner of pairing identity and QR downloads.
 """
 import base64
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -12,7 +13,7 @@ import sys
 import threading
 import time
 
-PROBE = Path.home() / 'edge-ai' / 'https-standard-probe' / 'https_probe.py'
+PROBE = Path(__file__).resolve().parent / 'https-standard-probe' / 'https_probe.py'
 
 
 class PairingQRManager:
@@ -24,6 +25,10 @@ class PairingQRManager:
         self.last_started = float('-inf')
 
     def generate(self, engine):
+        # Never generate a QR inside the existing private installation.
+        # Shared pairing is intentionally read-only from development.
+        if os.environ.get('PULSEDIRECTOR_HTTPS_PROBE_DIR'):
+            raise RuntimeError('Shared HTTPS pairing is read-only. Generate pairing codes using the existing private helper.')
         # Require an authenticated request at the HTTP handler level as well.
         if getattr(engine, 'simulate', False) or not getattr(engine, 'token', None):
             raise RuntimeError('HTTPS Cloud credentials are not configured')

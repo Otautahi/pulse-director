@@ -4,11 +4,12 @@ The callback is event-based. It is NEVER a heartbeat/physical motor proof.
 Only a stop-only HTTPS API preflight can establish current server acceptance.
 """
 import json
+import os
 import stat
 from datetime import datetime, timezone
 from pathlib import Path
 
-PROBE = Path(__file__).resolve().parent / 'https-standard-probe'
+PROBE = Path(os.environ.get('PULSEDIRECTOR_HTTPS_PROBE_DIR') or str(Path(__file__).resolve().parent / 'https-standard-probe'))
 
 class PairingError(RuntimeError):
     pass

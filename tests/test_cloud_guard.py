@@ -4,11 +4,19 @@ from pathlib import Path
 import sys
 import unittest
 import time
+import tempfile
+from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import edge_dashboard as m
 
 class NoHardwareCloudGuard(unittest.TestCase):
     def setUp(self):
+        self._temp_cloud_flag = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp_cloud_flag.cleanup)
+        self._cloud_flag_override = patch.object(m, 'HTTPS_ENABLE_FLAG', Path(self._temp_cloud_flag.name) / '.edge_https_cloud_enabled')
+        self._cloud_flag_override.start()
+        self.addCleanup(self._cloud_flag_override.stop)
+        m.HTTPS_ENABLE_FLAG.touch(mode=0o600)
         self.engine=m.HybridEngine('127.0.0.1',token='fake-token',uid='old-uid',simulate=False)
         self.engine._local_api=lambda x:(_ for _ in ()).throw(RuntimeError('mock no LAN'))
         self.calls=[]
@@ -66,13 +74,15 @@ class NoHardwareCloudGuard(unittest.TestCase):
         self.assertFalse(self.engine.status()['running'])
     def test_cloud_motor_levels_refuse_stale_callback(self):
         self.start_cloud()
-        with self.engine.state_lock:
-            self.engine.generation += 1 # isolate from worker race
-            gen=self.engine.generation
-        self.age=180
+        with self.engine.io_lock:
+            with self.engine.state_lock:
+                self.engine.generation += 1 # isolate from worker race
+                gen=self.engine.generation
+            self.age=180
+            before=sum(c.get('action','').startswith('Vibrate') for c in self.calls)
         with self.assertRaisesRegex(RuntimeError,'pairing expired'):
             self.engine._send_levels(gen,1,1)
-        self.assertFalse(any((c.get('action','').startswith('Vibrate')) for c in self.calls))
+        self.assertEqual(before,sum(c.get('action','').startswith('Vibrate') for c in self.calls))
     def test_cloud_recovery_refuses_old_pre_fault_callback(self):
         self.start_cloud()
         self.engine.stop('Fault',fault=True)
