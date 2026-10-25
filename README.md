@@ -4,6 +4,29 @@
 
 [![Offline tests](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml) · [MIT source licence](LICENSE) · [Security and limitations](docs/SECURITY.md)
 
+## Screenshots — v4.6 web dashboard
+
+These are **static previews rendered from the actual v4.6 interface**, with the Edge 2 disconnected and no session active. No pairing codes, access keys, or private network details are shown.
+
+### Desktop dashboard
+
+![PulseDirector desktop dashboard, disconnected preview](docs/screenshots/01_desktop_dashboard.png)
+
+### Pattern library and Autonomous Director
+
+![PulseDirector pattern library](docs/screenshots/02_pattern_library.png)
+
+![PulseDirector Autonomous Director settings](docs/screenshots/03_autonomous_director.png)
+
+<details>
+<summary>Mobile dashboard previews</summary>
+
+<p>
+  <img src="docs/screenshots/04_mobile_dashboard.png" width="300" alt="PulseDirector mobile dashboard preview">
+  <img src="docs/screenshots/05_mobile_director.png" width="300" alt="PulseDirector mobile Autonomous Director settings">
+</p>
+</details>
+
 ## Profiles — LAN is the default
 
 | | LAN (default) | Hybrid (opt-in) |
