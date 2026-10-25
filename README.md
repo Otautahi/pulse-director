@@ -99,7 +99,7 @@ LAN/Hybrid sessions pin the transport used to start a session; a failure latches
 
 ## Install, help and history
 
-- [Installation and startup](docs/INSTALL.md) · [Security and deployment](docs/SECURITY.md) · [Hybrid Cloud limitations](docs/HYBRID.md)
+- [Installation and startup](docs/INSTALL.md) · [Security and deployment](docs/SECURITY.md) · [Hybrid mode explained and safe preview](docs/HYBRID.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md) · [Release checklist](docs/RELEASE_CHECKLIST.md) · [Changelog](CHANGELOG.md)
 - The original **v4.5 LAN-only edition** is preserved in the [`release/v4.5.0-lan-rc1` branch](https://github.com/Otautahi/pulse-director/tree/release/v4.5.0-lan-rc1). The legacy branch and Git history are retained; this v4.6 tree is the unified current codebase.
 
