@@ -99,6 +99,14 @@ To stop the server, press **Ctrl+C** in the terminal. No background service or a
 
 LAN/Hybrid sessions pin the transport used to start a session; a failure latches a fault and blocks auto-resume. Cloud Stop requires separate physical-off acknowledgment before another Start; cloud callbacks indicate past pairing, not live device heartbeat. Testing was performed with simulated faults and limited owner-observed off-body tests on one Edge 2, **not** independently certified across devices or firmware.
 
+## Support future device development
+
+PulseDirector is free and open-source. If you'd like to help expand support to other Lovense devices, you can optionally gift a device through my [Lovense Wishlist](https://www.lovense.com/wish-list/3h7t6t3).
+
+**Devices received as gifts will be given priority for development and real-hardware testing.** Having the device available makes it possible to investigate compatibility and test changes safely. Priority does not guarantee support or a particular release date; technical feasibility and safety testing still matter.
+
+No sponsorship is required to use PulseDirector.
+
 ## Install, help and history
 
 - [Installation and startup](docs/INSTALL.md) · [Security and deployment](docs/SECURITY.md) · [Hybrid mode explained and safe preview](docs/HYBRID.md)
