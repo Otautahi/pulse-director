@@ -29,3 +29,6 @@ qr*.jpg
 *.zip
 *.tar.gz
 .DS_Store
+
+# Publish only safe environment template; keep real environment private.
+!.env.example

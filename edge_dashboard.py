@@ -38,7 +38,8 @@ DEFAULT_PHONE = "127.0.0.1"  # Users must provide their own Lovense Remote Game 
 CLOUD_ENDPOINT = "https://api.lovense-api.com/api/lan/v2/command"
 CLOUD_TOKEN_FILE = Path(os.environ.get("PULSEDIRECTOR_CLOUD_TOKEN_FILE") or
                         str(Path(__file__).resolve().parent / ".edge_cloud_token"))
-KEY_FILE = Path(__file__).resolve().parent / ".edge_dashboard_key"
+KEY_FILE = Path(os.environ.get("PULSEDIRECTOR_KEY_FILE") or
+                str(Path(__file__).resolve().parent / ".edge_dashboard_key"))
 KEEPER_FILE = Path(__file__).resolve().parent / ".edge_cloud_keeper_status.json"
 KEEPER_STALE_SECONDS = 25
 HTTPS_ENABLE_FLAG = Path(__file__).resolve().parent / ".edge_https_cloud_enabled"
@@ -1701,7 +1702,13 @@ def read_cloud_token(path):
 
 
 def access_key():
+    # Optional persistent key file for containers; existing Pi default unchanged.
+    if KEY_FILE.is_symlink():
+        raise RuntimeError("Dashboard key path must not be a symlink")
     if KEY_FILE.exists():
+        info = KEY_FILE.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid():
+            raise RuntimeError("Dashboard key must be an owner-owned regular file")
         key = KEY_FILE.read_text(encoding="utf-8").strip()
         if len(key) < 12:
             raise RuntimeError("Existing access key file seems invalid")
@@ -1754,7 +1761,7 @@ def main():
     if not args.no_print_key:
         print(f"  Access key: {key}")
     else:
-        print("  Access key: stored beside the dashboard script (not logged)")
+        print("  Access key: stored privately on disk (not logged)")
     print(f"  Home phone: {args.phone}:20010")
     print(f"  Profile:    {args.profile}")
     print(f"  Cloud:      {'CONFIGURED' if token else 'not configured/disabled'}")

@@ -1,0 +1,37 @@
+# LAN-only Docker Compose. Never expose the HTTP dashboard to the WAN.
+services:
+  pulsedirector:
+    build: .
+    image: pulsedirector:local
+    init: true
+    user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    environment:
+      PULSEDIRECTOR_KEY_FILE: /data/.edge_dashboard_key
+    ports:
+      - "${PULSEDIRECTOR_HOST_BIND_IP:-127.0.0.1}:${PULSEDIRECTOR_HOST_PORT:-8765}:8765"
+    volumes:
+      - pulsedirector-data:/data
+    command:
+      - python3
+      - -B
+      - edge_dashboard.py
+      - --profile
+      - lan
+      - --phone
+      - ${PULSEDIRECTOR_PHONE_IP:?Set PULSEDIRECTOR_PHONE_IP in .env}
+      - --bind
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --no-print-key
+    stop_grace_period: 20s
+    restart: "no"
+volumes:
+  pulsedirector-data:
