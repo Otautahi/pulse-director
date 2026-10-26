@@ -1,0 +1,8 @@
+# Fail closed: only audited source files are sent into Docker build context.
+*
+!edge_dashboard.py
+!edge2_director.py
+!edge2_https_pairing.py
+!edge2_pairing_ui.py
+!https-standard-probe/
+!https-standard-probe/https_probe.py

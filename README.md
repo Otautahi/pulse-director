@@ -18,6 +18,8 @@
 
 **New to this? Follow the [step-by-step installation guide](docs/INSTALL.md)** — it covers requirements, which IP address to use, opening the dashboard, first off-body test, and troubleshooting.
 
+**Prefer Docker?** See [experimental LAN-only Docker/Compose installation](docs/DOCKER.md). The dashboard binds to localhost by default; cloud motor control stays off and your existing Python installation remains supported.
+
 ## Screenshots — v4.6 web dashboard
 
 These are **static previews rendered from the actual v4.6 interface**, with the Edge 2 disconnected and no session active. No pairing codes, access keys, or private network details are shown.

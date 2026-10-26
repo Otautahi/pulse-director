@@ -16,7 +16,7 @@ PulseDirector is a **free, experimental web controller for one Lovense Edge 2**.
 
 **Required:** one Edge 2, a phone running **Lovense Remote with Game Mode**, a Raspberry Pi/Linux host with **Python 3.10 or newer and Git**, and a local network where the phone and host can communicate. The Linux host can use **wired Ethernet**, while the phone uses Wi-Fi on the same trusted network.
 
-**Not supported in v4.6:** Max 2, other toy models, or multiple toys simultaneously. Disconnect other toys during testing. Windows, macOS, Docker, native phone installation and remote/cloud deployment are not verified beginner installation paths.
+**Not supported in v4.6:** Max 2, other toy models, or multiple toys simultaneously. Disconnect other toys during testing. Windows, macOS, native phone installation and remote/cloud deployment are not verified beginner installation paths. A separate **experimental LAN-only Docker/Compose setup** is available in [DOCKER.md](DOCKER.md), but is not yet verified with an actual Edge 2 inside a container.
 
 ## 2. Prepare your Raspberry Pi / Linux computer
 

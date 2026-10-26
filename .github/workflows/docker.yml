@@ -1,0 +1,49 @@
+name: Docker LAN-only build and simulated smoke
+
+on:
+  push:
+    paths: [Dockerfile, .dockerignore, compose.yaml, .env.example, edge_dashboard.py, tests/test_docker_config.py, .github/workflows/docker.yml]
+  pull_request:
+    paths: [Dockerfile, .dockerignore, compose.yaml, .env.example, edge_dashboard.py, tests/test_docker_config.py, .github/workflows/docker.yml]
+
+jobs:
+  amd64-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate Compose configuration
+        run: PULSEDIRECTOR_PHONE_IP=127.0.0.1 docker compose config --quiet
+      - name: Build image
+        run: docker build --pull --tag pulsedirector:ci .
+      - name: Simulated HTTP smoke and persistent key
+        run: |
+          docker volume create pd-ci-private >/dev/null
+          docker run -d --name pd-ci --read-only --cap-drop=ALL \
+            --security-opt=no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --mount type=volume,source=pd-ci-private,target=/data \
+            -p 127.0.0.1:18765:8765 pulsedirector:ci \
+            python3 -B edge_dashboard.py --profile lan --simulate --bind 0.0.0.0 --port 8765 --no-print-key
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:18765/; then break; fi
+            sleep 1
+          done
+          curl -fsS -o /tmp/pd-dashboard.html http://127.0.0.1:18765/
+          grep -q PulseDirector /tmp/pd-dashboard.html
+          test "$(docker exec pd-ci stat -c %a /data/.edge_dashboard_key)" = 600
+          docker stop -t 20 pd-ci
+          docker rm pd-ci
+          docker run --rm --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+            --mount type=volume,source=pd-ci-private,target=/data pulsedirector:ci \
+            python3 -c 'import edge_dashboard; assert len(edge_dashboard.access_key()) >= 12'
+          docker volume rm pd-ci-private
+
+  armv7-cross-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: ARMv7 build only (no hardware I/O)
+        run: docker buildx build --platform linux/arm/v7 --output type=cacheonly .
