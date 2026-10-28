@@ -4,6 +4,14 @@ PulseDirector is a **free, experimental web controller for one Lovense Edge 2**.
 
 > **Safety first:** the Edge 2 must be **off-body** for setup and initial testing. Software Stop is not a guaranteed physical emergency Stop, particularly if Wi-Fi/Bluetooth/phone communication fails. Keep the toy's physical power control within reach. Only run this dashboard on a **trusted LAN or private VPN**; never port-forward it to the internet.
 
+## Before you begin — where do I type the commands?
+
+**All commands in this guide go into a terminal on your Raspberry Pi or Linux computer**, not into Lovense Remote or a phone browser. If your Pi has no screen, use an SSH program on another computer or phone to open a terminal connected to your Pi.
+
+You will use your **phone** only to connect the Edge 2 through Lovense Remote, check the phone's Wi-Fi IP, and open the PulseDirector dashboard in a browser.
+
+Want a preview first? Jump to the [simulator guide](#optional-preview-the-dashboard-without-a-toy). The simulator needs **no connected toy** and sends no real motor commands.
+
 ## 1. Can I install it on my device?
 
 | Device for running the controller | Status |
@@ -38,7 +46,15 @@ cd pulse-director
 python3 -m unittest discover -s tests -q
 ```
 
-The tests don't run the motors. If the tests fail, don't proceed to real-device control; see [troubleshooting](TROUBLESHOOTING.md). **Do not clone over an existing PulseDirector installation.**
+**What should you see?** The Python check prints something like `Python 3.11.x` (any version **3.10 or newer** is fine). After the tests finish, the final lines should look like:
+
+```text
+Ran ... tests in ...s
+
+OK
+```
+
+The exact test count and duration may differ. **`OK` means the offline checks passed**, not that your particular Edge 2 connection has been tested. Tests don't run the motors. If the tests fail, don't proceed to real-device control; see [troubleshooting](TROUBLESHOOTING.md). **Do not clone over an existing PulseDirector installation.**
 
 ## 3. Connect the Edge 2 to your phone
 
@@ -79,6 +95,8 @@ python3 edge_dashboard.py --profile lan --phone 192.168.1.50 --bind 192.168.1.20
 ```
 
 Those addresses are **examples only**; use your own local values.
+
+**What should you see?** The terminal should print a line like `Open: http://192.168.1.20:8765`, show `Profile: lan`, and report `Mode: LIVE (real device)`. It also prints a **private access key**; keep it to yourself and **never share it in a support issue**. If the terminal reports a port-binding error, see [troubleshooting](TROUBLESHOOTING.md).
 
 Leave this terminal **open** while using PulseDirector. The controller runs until you stop it; these steps do **not** install a background service or automatic startup.
 
@@ -134,5 +152,13 @@ Then open `http://127.0.0.1:8876` on the computer running SSH. PuTTY users can s
 - **Access key lost:** it stays in the local `.edge_dashboard_key` file; don't share or upload it.
 - **Need background startup or updates?** This basic guide starts the process in a terminal. There is **no universal preconfigured systemd service or one-click installer** in the public repository. Do not `git pull` over an active private installation; use a separate checkout, backup and rollback plan.
 - **Want remote/cloud use?** The [optional Hybrid guide](HYBRID.md) describes advanced experimental setup. `--profile hybrid` by itself does not enable cloud motor control and is **not** needed for LAN use.
+
+## Tell us how your first installation went
+
+**Did it work? Did something confuse you?** A quick report helps make installation easier for the next person — even if you only tried simulation or got stuck before opening the dashboard.
+
+**[Share a first-time tester report](https://github.com/Otautahi/pulse-director/issues/new?template=first-time-tester.yml)**
+
+Please mention the type of Raspberry Pi/Linux host, Python version and the step where you succeeded or got stuck. **Never share your dashboard key, cloud token, QR/pairing code, personal IP address, device ID or unredacted logs.**
 
 For more help, see [troubleshooting](TROUBLESHOOTING.md), [security limits](SECURITY.md), and the [README](../README.md). This is an unofficial project, not affiliated with Lovense.

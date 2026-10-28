@@ -1,26 +1,58 @@
-# PulseDirector v4.6 — Edge 2 LAN & Hybrid controller
+# PulseDirector — control your Lovense Edge 2 from a browser
 
-**Experimental / community project — not a certified physical safety device.** An independent, free, self-hosted browser controller for **one Lovense Edge 2** on Linux / Raspberry Pi OS, with a local Game Mode (LAN) profile and an **optional experimental** HTTPS Cloud integration. It is not affiliated with Lovense.
+**Raspberry Pi or Linux computer? You can get started with a few copy-and-paste terminal commands — no programming required.**
+
+PulseDirector is a **free, open-source, self-hosted Edge 2 controller** with separate control for both motors, a library of 20 modes, adjustable intensity and timers, and an **Autonomous Director** that plans changing patterns. Use the dashboard from a phone or computer browser.
+
+**The standard LAN setup needs no subscription, cloud developer token, Docker or extra Python `pip` packages.** Your phone runs Lovense Remote; your Raspberry Pi or Linux computer runs PulseDirector. Hybrid/cloud features are optional and experimental.
+
+**[Beginner-friendly installation guide](docs/INSTALL.md)** · **[Try a simulator without a toy](docs/INSTALL.md#optional-preview-the-dashboard-without-a-toy)** · **[Docker (experimental)](docs/DOCKER.md)**
+
+> **Important safety note:** This is an experimental controller, **not a physical emergency-stop system**. For initial tests, keep the Edge 2 **off-body**, start at low intensity and keep its physical power button within reach. A lost Bluetooth/Wi-Fi/phone connection can prevent Stop from reaching the device. Never expose the HTTP dashboard to the public internet.
+
+## Quick start — Raspberry Pi OS / Debian / Ubuntu (LAN)
+
+**What you need:** A Raspberry Pi or Linux computer with **Python 3.10+**, Git, one **Lovense Edge 2**, and a phone with **Lovense Remote** and **Game Mode**, connected on a trusted, mutually reachable local network. You do **not** need to configure Hybrid or Docker.
+
+**1. Open a terminal on your Pi/Linux computer.** If your Pi is headless, connect to it using SSH. Run:
+
+```bash
+sudo apt update
+sudo apt install -y git python3
+python3 --version
+```
+
+Make sure the Python version displayed is **3.10 or newer**.
+
+**2. Download PulseDirector and run its offline checks.** Run these commands in the **same terminal**:
+
+```bash
+git clone https://github.com/Otautahi/pulse-director.git
+cd pulse-director
+python3 -m unittest discover -s tests -q
+```
+
+The test run should finish with **`OK`** (the test count can change). It does not control a real toy. If tests fail, stop here and use the [troubleshooting guide](docs/TROUBLESHOOTING.md).
+
+**3. Pair the Edge 2 with Lovense Remote** on your phone, enable **Game Mode**, and note your **phone's local Wi-Fi IP address**. Keep the toy off-body. On your Pi/Linux computer, run `hostname -I` to find its **LAN IP address**. These are **two different IPs**; don't use isolated guest Wi-Fi or a public address.
+
+**4. Start the LAN controller.** Replace `PHONE_IP` and `LINUX_IP` below with your actual phone and Pi/Linux LAN addresses:
+
+```bash
+python3 edge_dashboard.py --profile lan --phone PHONE_IP --bind LINUX_IP --port 8765
+```
+
+**5. Open `http://LINUX_IP:8765`** on a browser connected to your trusted home network. Enter the private access key shown in the terminal. Your dashboard should appear; confirm that it detects **one Edge 2** before trying each motor at low intensity **off-body**. Check manual Stop and a short timed Stop. Keep the terminal running; press **Ctrl+C** to exit when the device is physically stopped.
+
+**Rather try it without a toy?** From the `pulse-director` directory run `python3 edge_dashboard.py --profile lan --simulate --port 8876`. This is a **localhost-only** preview with no real motor commands. If running on a headless Pi, use the [SSH tunnel instructions](docs/INSTALL.md#optional-preview-the-dashboard-without-a-toy) to view it.
+
+**Stuck or new to Linux?** The [step-by-step beginner installation guide](docs/INSTALL.md) explains where to enter each command, which IP is which, what output to expect and common connection problems.
+
+**Have you tried it?** [Report your first result — success or problem](https://github.com/Otautahi/pulse-director/issues/new?template=first-time-tester.yml). Even a quick confirmation that it installed helps.
 
 [![Offline tests](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml) · [MIT source licence](LICENSE) · [Security and limitations](docs/SECURITY.md)
 
-## Where can I run it?
-
-| What you have | Installation status |
-|---|---|
-| **Raspberry Pi 3B+** running Raspberry Pi OS / Linux with Python 3.10+ | **Owner-tested** with one Edge 2 |
-| **Other Raspberry Pi models** with a suitable Linux OS and Python 3.10+ | Intended to work; not individually hardware-tested |
-| **Linux PC, mini PC or server** with Python 3.10+ | Supported source setup; physical Edge 2 testing has focused on the Pi |
-| **Windows or macOS computer** | Native installation **not verified or documented** |
-| **Android or iPhone alone** | **Not a standalone phone app.** The phone runs Lovense Remote; open the PulseDirector dashboard in a browser |
-
-**You also need:** one Lovense **Edge 2**, a phone running Lovense Remote with **Game Mode**, and a trusted local network connecting the phone and Linux host. **Max 2 and multiple toys aren't supported yet.** No paid cloud service or Python `pip` packages are required for the standard LAN setup.
-
-**New to this? Follow the [step-by-step installation guide](docs/INSTALL.md)** — it covers requirements, which IP address to use, opening the dashboard, first off-body test, and troubleshooting.
-
-**Prefer Docker?** See [experimental LAN-only Docker/Compose installation](docs/DOCKER.md). The dashboard binds to localhost by default; cloud motor control stays off and your existing Python installation remains supported.
-
-## Screenshots — v4.6 web dashboard
+## See what the dashboard looks like
 
 These are **static previews rendered from the actual v4.6 interface**, with the Edge 2 disconnected and no session active. No pairing codes, access keys, or private network details are shown.
 
@@ -43,7 +75,17 @@ These are **static previews rendered from the actual v4.6 interface**, with the 
 </p>
 </details>
 
-## Profiles — LAN is the default
+## Where does it run?
+
+| What you have | Installation status |
+|---|---|
+| **Raspberry Pi 3B+** running Raspberry Pi OS / Linux with Python 3.10+ | **Owner-tested** with one Edge 2 |
+| **Other Raspberry Pi models** with a suitable Linux OS and Python 3.10+ | Intended to work; not individually hardware-tested |
+| **Linux PC, mini PC or server** with Python 3.10+ | Supported source setup; physical Edge 2 testing has focused on the Pi |
+| **Windows or macOS computer** | Native installation **not verified or documented** |
+| **Android or iPhone alone** | **Not a standalone phone app.** The phone runs Lovense Remote; open the PulseDirector dashboard in a browser |
+
+## LAN or Hybrid? Start with LAN
 
 | | LAN (default) | Hybrid (opt-in) |
 |---|---|---|
@@ -59,39 +101,13 @@ These are **static previews rendered from the actual v4.6 interface**, with the 
 
 **Supported device:** a *single* reported Edge 2. Max 2, other toys and simultaneous multi-device operation are **not implemented**. The program refuses ambiguous, unsupported or multiple reported devices.
 
-## Quick start — Raspberry Pi OS / Linux
+## Tried PulseDirector? Tell us how it went
 
-**1. Install Git and check Python.** On Raspberry Pi OS, Debian or Ubuntu:
+**Even a quick "it worked" helps.** If you tried installing PulseDirector, I'd love to hear whether the instructions made sense, whether your Edge 2 connected, or exactly where you got stuck.
 
-```bash
-sudo apt update
-sudo apt install -y git python3
-python3 --version
-```
+**[Share your first-time test result](https://github.com/Otautahi/pulse-director/issues/new?template=first-time-tester.yml)** · [See all issues and feature requests](https://github.com/Otautahi/pulse-director/issues)
 
-If the version is lower than **3.10**, use a supported newer Linux OS image before continuing.
-
-**2. Download and run the offline tests** (no device commands):
-
-```bash
-git clone https://github.com/Otautahi/pulse-director.git
-cd pulse-director
-python3 -m unittest discover -s tests -q
-```
-
-**3. Connect one off-body Edge 2 in Lovense Remote**, enable Game Mode, and find the phone's local Wi-Fi IP address. On the Linux computer run `hostname -I` to find its **trusted LAN IP**. The phone and computer must be able to reach each other.
-
-**4. Start PulseDirector** — replace `PHONE_IP` and `LINUX_IP` with the two real IP addresses:
-
-```bash
-python3 edge_dashboard.py --profile lan --phone PHONE_IP --bind LINUX_IP --port 8765
-```
-
-**5. Open** `http://LINUX_IP:8765` in a browser on your trusted network. The dashboard access key is shown in the Linux terminal. Keep it private. Start with the Edge 2 **off-body at the lowest intensity** and check manual and timed Stop.
-
-To stop the server, press **Ctrl+C** in the terminal. No background service or automatic startup is installed by these steps. For a no-device preview, remote/headless Pi access, additional troubleshooting and safe update guidance, see the **[full installation guide](docs/INSTALL.md)**.
-
-**Important:** This is an experimental controller, not a hardware fail-safe. A phone, Wi-Fi or Bluetooth outage can prevent a Stop reaching the toy. Keep its physical power button accessible. **Never port-forward the HTTP dashboard to the internet.**
+No detailed logs are needed for a success report. For problems, mention your **Pi/Linux OS**, Python version and what happened — **never post dashboard keys, cloud tokens, pairing codes, personal IPs, device IDs or private logs**.
 
 ## Safety limitations
 
@@ -114,3 +130,4 @@ No sponsorship is required to use PulseDirector.
 - The original **v4.5 LAN-only edition** is preserved in the [`release/v4.5.0-lan-rc1` branch](https://github.com/Otautahi/pulse-director/tree/release/v4.5.0-lan-rc1). The legacy branch and Git history are retained; this v4.6 tree is the unified current codebase.
 
 The MIT licence covers this project's own source. Lovense API/developer terms and trademark rights are separate; see the [licensing caveat](docs/SECURITY.md) and [issue #4](https://github.com/Otautahi/pulse-director/issues/4). This source release does not imply vendor endorsement or permission beyond those terms.
+

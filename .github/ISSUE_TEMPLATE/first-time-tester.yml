@@ -1,0 +1,46 @@
+name: First-time tester report
+description: Share whether installation worked or where you got stuck (LAN or simulator)
+title: "[Tester report] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying PulseDirector! A short success report is just as welcome as a bug report.
+        **Privacy:** Do not include dashboard keys, cloud tokens, pairing codes, IP addresses, toy/device IDs or unredacted logs.
+        Never test the Edge 2 on-body during initial setup. A software Stop is not a guaranteed physical Stop.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: How far did you get?
+      options:
+        - "Installed and successfully controlled my Edge 2"
+        - "Dashboard opened, but Edge 2 could not connect"
+        - "Installation failed before the dashboard opened"
+        - "Simulator worked (no physical toy tested)"
+        - "Simulator did not work"
+        - "I have feedback or a question about the instructions"
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host and operating system (optional)
+      placeholder: "e.g. Raspberry Pi 3B+, Raspberry Pi OS Bookworm"
+  - type: input
+    id: python
+    attributes:
+      label: Python version (optional)
+      placeholder: "e.g. Python 3.11"
+  - type: textarea
+    id: experience
+    attributes:
+      label: What worked or what got you stuck?
+      description: Mention the step you reached, expected result and actual result if there was a problem.
+      placeholder: "e.g. Install steps passed; dashboard loaded; Game Mode detected one Edge 2..."
+    validations:
+      required: true
+  - type: textarea
+    id: suggestions
+    attributes:
+      label: What could make the installation easier? (optional)
+      placeholder: "Any confusing wording, missing steps or feature ideas?"
