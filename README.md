@@ -10,7 +10,7 @@ PulseDirector is a **free, open-source, self-hosted Edge 2 controller** with sep
 
 > **Important safety note:** This is an experimental controller, **not a physical emergency-stop system**. For initial tests, keep the Edge 2 **off-body**, start at low intensity and keep its physical power button within reach. A lost Bluetooth/Wi-Fi/phone connection can prevent Stop from reaching the device. Never expose the HTTP dashboard to the public internet.
 
-## Quick start — Raspberry Pi OS / Linux (LAN)
+## Quick start — Raspberry Pi OS / Debian / Ubuntu (LAN)
 
 **What you need:** A Raspberry Pi or Linux computer with **Python 3.10+**, Git, one **Lovense Edge 2**, and a phone with **Lovense Remote** and **Game Mode**, connected on a trusted, mutually reachable local network. You do **not** need to configure Hybrid or Docker.
 
@@ -46,8 +46,9 @@ python3 edge_dashboard.py --profile lan --phone PHONE_IP --bind LINUX_IP --port 
 
 **Rather try it without a toy?** From the `pulse-director` directory run `python3 edge_dashboard.py --profile lan --simulate --port 8876`. This is a **localhost-only** preview with no real motor commands. If running on a headless Pi, use the [SSH tunnel instructions](docs/INSTALL.md#optional-preview-the-dashboard-without-a-toy) to view it.
 
-**Stuck or new to Linux?** The [illustrated-by-examples installation guide](docs/INSTALL.md) explains where to enter each command, which IP is which, what output to expect and common connection problems.
+**Stuck or new to Linux?** The [step-by-step beginner installation guide](docs/INSTALL.md) explains where to enter each command, which IP is which, what output to expect and common connection problems.
 
+**Have you tried it?** [Report your first result — success or problem](https://github.com/Otautahi/pulse-director/issues/new?template=first-time-tester.yml). Even a quick confirmation that it installed helps.
 
 [![Offline tests](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Otautahi/pulse-director/actions/workflows/tests.yml) · [MIT source licence](LICENSE) · [Security and limitations](docs/SECURITY.md)
 
