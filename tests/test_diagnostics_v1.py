@@ -110,7 +110,7 @@ class SnapshotTests(unittest.TestCase):
 
     def test_fault_and_stop_are_software_only(self):
         self.engine.fault_latched = True
-        self.engine.fault_reason = "STOP NOT DELIVERED; 192.168.0.45 token=ultrasecret"
+        self.engine.fault_reason = "STOP NOT DELIVERED; 192.0.2.45 token=ultrasecret"
         self.engine.stop_pending = True
         self.engine.last_stop_error = "ultrasecret"
         result = self.snap()
@@ -123,7 +123,7 @@ class SnapshotTests(unittest.TestCase):
 
     def test_secret_and_error_text_never_serialized(self):
         self.engine.last_device_error = (
-            "Cannot reach Lovense Remote at 192.168.0.45; "
+            "Cannot reach Lovense Remote at 192.0.2.45; "
             "token=ultrasecret callback=https://private.example/ "
             "UID=privateid QR=privatepair"
         )
@@ -131,7 +131,7 @@ class SnapshotTests(unittest.TestCase):
         self.engine.fault_reason = "privatepair"
         self.engine.last_stop_error = "ultrasecret"
         text = json.dumps(self.snap())
-        for sensitive in ("ultrasecret", "192.168.0.45", "private.example",
+        for sensitive in ("ultrasecret", "192.0.2.45", "private.example",
                           "privatepair", "privateid", "UID=", "QR="):
             self.assertNotIn(sensitive, text)
         self.assertEqual(self.snap()["connection"]["cached_error_category"]["value"],
