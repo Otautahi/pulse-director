@@ -28,6 +28,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from datetime import datetime, timezone
 from edge2_https_pairing import verified_pairing, PairingError
+from pulsedirector_diagnostics import start_private_diagnostics_server, stop_private_diagnostics_server
 
 MODES = {"autonomous", "wave", "pulse", "alternate", "chase", "sync", "ramp", "random",
          "anchor", "heartbeat", "orbit", "cascade", "flutter", "tide",
@@ -1740,6 +1741,8 @@ def main():
     p.add_argument("--no-print-key", action="store_true", help="Do not print the access key (recommended with systemd)")
     p.add_argument("--uid", default="local-owner", help="Legacy identifier (ignored by HTTPS cloud transport)")
     p.add_argument("--simulate", action="store_true", help="Simulate device I/O for testing")
+    p.add_argument("--diagnostics-socket", default="", metavar="ABSOLUTE_PATH",
+                   help="Opt-in read-only diagnostics via owner-only Unix socket (disabled by default)")
     args = p.parse_args()
     key = access_key()
     token = ""
@@ -1771,11 +1774,19 @@ def main():
     def handle_signal(signum, frame):
         threading.Thread(target=http.shutdown, daemon=True).start()
     signal.signal(signal.SIGTERM, handle_signal)
+    diagnostics_server = None
+    diagnostics_thread = None
     try:
+        if args.diagnostics_socket:
+            diagnostics_server, diagnostics_thread = start_private_diagnostics_server(
+                args.diagnostics_socket, engine, profile=args.profile)
+            print("  Diagnostics: private local Unix socket enabled", flush=True)
         http.serve_forever(poll_interval=.3)
     except KeyboardInterrupt:
         pass
     finally:
+        if diagnostics_server is not None:
+            stop_private_diagnostics_server(diagnostics_server, diagnostics_thread)
         http.server_close()
         engine.shutdown()
         print("Dashboard stopped; STOP sent if the phone was reachable.")
