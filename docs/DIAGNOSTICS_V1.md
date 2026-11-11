@@ -1,4 +1,4 @@
-# PulseDirector v4.6 — PiMonitor diagnostics contract v1 (experimental)
+# PulseDirector v4.6 — read-only diagnostics contract v1 (experimental)
 
 This is an **opt-in, strictly read-only diagnostic interface** for the
 PulseDirector v4.6 source candidate. It does not modify motor, session,
@@ -13,8 +13,8 @@ owner installation merely because this source exists on GitHub.**
 - **Default:** **disabled**, no socket and no additional server.
 - **Access control:** socket file owned by the PulseDirector process user,
   `0600`, inside an existing same-user-owned `0700` directory.
-- **Dashboard key:** **not required and never shared with PiMonitor**.
-- **PiMonitor prerequisite:** the collector must be authorized to access
+- **Dashboard key:** **not required and never shared with monitoring clients**.
+- **Monitoring client prerequisite:** the collector must be authorized to access
   the socket as its owner. Do not loosen filesystem permissions to grant
   access; use a reviewed separate access mechanism if the processes run
   under different users.
@@ -36,19 +36,19 @@ On a **new source checkout, not over your existing Pi installation**, create
 an owner-only directory. The paths below are examples only.
 
 ```bash
-mkdir -p -m 700 "$HOME/Projects/PulseDirector/private-diagnostics"
-chmod 700 "$HOME/Projects/PulseDirector/private-diagnostics"
+mkdir -p -m 700 "$HOME/.pulsedirector-diagnostics"
+chmod 700 "$HOME/.pulsedirector-diagnostics"
 cd /path/to/a/separate/pulse-director-checkout
 python3 -m unittest discover -s tests -q
 python3 edge_dashboard.py --profile lan --simulate --port 8876 \
-  --diagnostics-socket "$HOME/Projects/PulseDirector/private-diagnostics/pulsedirector.sock"
+  --diagnostics-socket "$HOME/.pulsedirector-diagnostics/pulsedirector.sock"
 ```
 
 From another terminal **on the same Pi**, using the same Unix account:
 
 ```bash
 curl --fail --silent --show-error \
-  --unix-socket "$HOME/Projects/PulseDirector/private-diagnostics/pulsedirector.sock" \
+  --unix-socket "$HOME/.pulsedirector-diagnostics/pulsedirector.sock" \
   http://localhost/api/diagnostics/v1
 ```
 
@@ -147,7 +147,7 @@ intensities, motor commands and history are **never serialized**.
 disconnect/reconnect times, session outcomes, interruption history,
 recovery attempt/outcome history, exact Stop result and sanitized event
 history. These require future **separate reviewed instrumentation**;
-PiMonitor must show `unavailable` rather than guessing.
+Monitoring clients must show `unavailable` rather than guessing.
 
 ### Failure responses
 
@@ -162,7 +162,7 @@ PiMonitor must show `unavailable` rather than guessing.
 ## Release, backup and rollback boundaries
 
 This candidate is a **GitHub source branch** until explicitly staged and
-tested on the owner Pi. It does **not** update a private
+tested on a designated test host. It does **not** update a private
 `edge2-dashboard.service` automatically.
 
 1. Keep the current private installation and systemd unit untouched.
@@ -177,22 +177,21 @@ tested on the owner Pi. It does **not** update a private
    `ExecStart` as a separate opt-in change, never implicit in a
    documentation or public GitHub update.
 6. Rollback means restoring the previous code and previous systemd command,
-   then confirming the normal dashboard and service work. Do not disturb
-   Pi-hole, WireGuard, PiBackup or unrelated services.
+   then confirming the normal dashboard and service work. Do not disturb other applications, services or host configuration.
 
-## Handoff to PiMonitor
+## Handoff to a monitoring client
 
-**Do not configure PiMonitor until the actual Pi installation is verified.**
+**Do not configure monitoring clients until the actual local installation is verified.**
 After a separate deployment, record:
 
 - Actual installed PulseDirector version/commit.
 - Explicit owner-only socket pathname, expected Unix user and permissions.
 - Successful `GET /api/diagnostics/v1` response schema v1.
 - Polling interval and freshness handling (e.g. every 60 seconds) to avoid
-  excessive resource use on the Pi 3B+.
+  excessive resource use on low-power hardware.
 - Per-field `supported`, `source`, `freshness`, `reason`, plus captured
   UTC time; preserve `503` and socket failures as unavailable.
 - Never copy raw socket data to public logs or assume physical Stop.
 
-PiMonitor should consume this API read-only, keep its existing project
-discovery and Drive export handling, and avoid probing control routes.
+Monitoring clients should consume this API read-only, preserve their own
+privacy and export policies, and avoid probing control routes.
