@@ -126,7 +126,7 @@ No sponsorship is required to use PulseDirector.
 ## Install, help and history
 
 - [Installation and startup](docs/INSTALL.md) · [Security and deployment](docs/SECURITY.md) · [Hybrid mode explained and safe preview](docs/HYBRID.md)
-- [Read-only diagnostics for PiMonitor (opt-in, Unix socket)](docs/DIAGNOSTICS_V1.md) — disabled unless explicitly configured
+- [Optional read-only diagnostics interface (Unix socket)](docs/DIAGNOSTICS_V1.md) — disabled unless explicitly configured
 - [Troubleshooting](docs/TROUBLESHOOTING.md) · [Release checklist](docs/RELEASE_CHECKLIST.md) · [Changelog](CHANGELOG.md)
 - The original **v4.5 LAN-only edition** is preserved in the [`release/v4.5.0-lan-rc1` branch](https://github.com/Otautahi/pulse-director/tree/release/v4.5.0-lan-rc1). The legacy branch and Git history are retained; this v4.6 tree is the unified current codebase.
 
