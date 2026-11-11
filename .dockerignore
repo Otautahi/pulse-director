@@ -4,5 +4,6 @@
 !edge2_director.py
 !edge2_https_pairing.py
 !edge2_pairing_ui.py
+!pulsedirector_diagnostics.py
 !https-standard-probe/
 !https-standard-probe/https_probe.py

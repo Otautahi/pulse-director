@@ -8,7 +8,7 @@ WORKDIR /opt/pulsedirector
 RUN groupadd --gid 10001 pulsedirector \
  && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent pulsedirector \
  && mkdir -p /data && chown 10001:10001 /data && chmod 0700 /data
-COPY --chown=10001:10001 edge_dashboard.py edge2_director.py edge2_https_pairing.py edge2_pairing_ui.py ./
+COPY --chown=10001:10001 edge_dashboard.py edge2_director.py edge2_https_pairing.py edge2_pairing_ui.py pulsedirector_diagnostics.py ./
 COPY --chown=10001:10001 https-standard-probe/https_probe.py ./https-standard-probe/https_probe.py
 USER 10001:10001
 EXPOSE 8765

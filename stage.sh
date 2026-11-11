@@ -22,7 +22,7 @@ mkdir -p "$(dirname "$DEST")"
 TMP="$(mktemp -d "$(dirname "$DEST")/.v46-stage.XXXXXXXX")"
 trap '[[ ! -d "$TMP" ]] || rm -rf -- "$TMP"' EXIT
 # Whitelist *source* files: never copy QR images, pairing configs, token files or logs.
-cp -- "$SRC/edge_dashboard.py" "$SRC/edge2_director.py" "$SRC/edge2_https_pairing.py" "$SRC/edge2_pairing_ui.py" "$SRC/README.md" "$SRC/.gitignore" "$TMP/"
+cp -- "$SRC/edge_dashboard.py" "$SRC/edge2_director.py" "$SRC/edge2_https_pairing.py" "$SRC/edge2_pairing_ui.py" "$SRC/pulsedirector_diagnostics.py" "$SRC/README.md" "$SRC/.gitignore" "$TMP/"
 mkdir -p "$TMP/https-standard-probe" "$TMP/tests" "$TMP/docs"
 cp -- "$SRC/https-standard-probe/https_probe.py" "$TMP/https-standard-probe/"
 cp -- "$SRC"/tests/test_*.py "$TMP/tests/"
